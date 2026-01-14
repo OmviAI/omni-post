@@ -1,0 +1,10 @@
+[phases.setup]
+    nixPkgs = ['nodejs', 'python3']
+    aptPkgs = ['build-essential', 'libudev-dev']
+
+[build]
+    builder = "NIXPACKS"
+    buildCommand = "pnpm install && pnpm run build:backend"
+
+[deploy]
+    startCommand = "pnpm start:prod:backend"
