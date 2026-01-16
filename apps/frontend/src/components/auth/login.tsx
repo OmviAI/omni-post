@@ -51,6 +51,18 @@ export function Login() {
         message: await login.text(),
       });
       setLoading(false);
+    } else if (login.status === 200) {
+      // Check for reload or onboarding header, otherwise redirect to default page
+      const reloadHeader = login.headers.get('reload');
+      const onboardingHeader = login.headers.get('onboarding');
+      
+      if (reloadHeader || onboardingHeader) {
+        // Let the afterRequest handler in layout.context handle the redirect
+        window.location.reload();
+      } else {
+        // Fallback: redirect to launches page (or analytics if not general)
+        window.location.href = isGeneral ? '/launches' : '/analytics';
+      }
     }
   };
   return (
