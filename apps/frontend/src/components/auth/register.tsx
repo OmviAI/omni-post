@@ -125,7 +125,7 @@ export function RegisterAfter({
             if (response.headers.get('activate') === 'true') {
               router.push('/auth/activate');
             } else {
-              router.push('/auth/launches');
+              router.push('/launches');
             }
           });
         } else {
