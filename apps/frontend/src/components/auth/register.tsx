@@ -126,7 +126,9 @@ export function RegisterAfter({
           let responseData;
           try {
             responseData = await response.clone().json();
+            console.log('[Register] Response data:', responseData);
           } catch (e) {
+            console.warn('[Register] Failed to parse JSON response:', e);
             // Fall back to headers if JSON parsing fails
           }
           
@@ -135,24 +137,42 @@ export function RegisterAfter({
           const needsActivation = activateHeader === 'true' || responseData?.activate === true;
           
           if (needsActivation) {
+            console.log('[Register] Activation required, redirecting to /auth/activate');
             // Track in background, don't wait
             track(TrackEnum.CompleteRegistration).catch(() => {});
-            router.push('/auth/activate');
+            window.location.replace('/auth/activate');
             return;
           }
           
           // Check for onboarding header or register: true in JSON
           // Backend sends 'onboarding: true' header on successful registration
+          // For Railway, we rely primarily on JSON response since headers might not be accessible
           const onboardingHeader = response.headers.get('onboarding');
-          const isRegistered = onboardingHeader === 'true' || responseData?.register === true;
+          const isRegistered = onboardingHeader === 'true' || 
+                               responseData?.register === true || 
+                               responseData?.register === 'true';
+          
+          console.log('[Register] Checking registration status:', {
+            onboardingHeader,
+            responseDataRegister: responseData?.register,
+            isRegistered
+          });
           
           if (isRegistered) {
             // Track in background, don't wait
             track(TrackEnum.CompleteRegistration).catch(() => {});
-            // Use window.location.href for better Railway compatibility
-            window.location.href = isGeneral ? '/launches?onboarding=true' : '/analytics?onboarding=true';
+            // Use window.location.replace for immediate redirect (prevents back button issues)
+            // This is more reliable than window.location.href on Railway
+            const redirectUrl = isGeneral ? '/launches?onboarding=true' : '/analytics?onboarding=true';
+            console.log('[Register] Registration successful, redirecting to:', redirectUrl);
+            // Use setTimeout(0) to ensure redirect happens after current execution context
+            setTimeout(() => {
+              window.location.replace(redirectUrl);
+            }, 0);
             return;
           }
+          
+          console.warn('[Register] Registration succeeded but redirect condition not met, falling back to login');
           
           // Fallback: redirect to login
           track(TrackEnum.CompleteRegistration).catch(() => {});

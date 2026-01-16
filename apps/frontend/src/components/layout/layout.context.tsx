@@ -57,6 +57,13 @@ function LayoutContextInner(params: { children: ReactNode }) {
         window.location.href = '/';
         return true;
       }
+      // Skip onboarding redirect for /auth/register - let the component handle it
+      // This is more reliable on Railway where headers might not be accessible
+      if (url === '/auth/register' && response?.status === 200) {
+        // Let the register component handle redirect based on JSON response
+        return true;
+      }
+      
       const reloadOrOnboarding =
         response?.headers?.get('reload') ||
         response?.headers?.get('onboarding');

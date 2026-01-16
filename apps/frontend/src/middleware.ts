@@ -81,8 +81,14 @@ export async function middleware(request: NextRequest) {
     );
   }
 
-  // If the url is /auth and the cookie exists, redirect to /
+  // If the url is /auth and the cookie exists, redirect appropriately
   if (nextUrl.href.indexOf('/auth') > -1 && authCookie) {
+    // If onboarding query param is present, redirect to launches/analytics instead of staying on /auth
+    if (nextUrl.searchParams.has('onboarding')) {
+      const onboardingRedirect = !!process.env.IS_GENERAL ? '/launches?onboarding=true' : '/analytics?onboarding=true';
+      return NextResponse.redirect(new URL(onboardingRedirect, nextUrl.href));
+    }
+    // Otherwise, redirect to root
     return NextResponse.redirect(new URL(`/${url}`, nextUrl.href));
   }
   if (nextUrl.href.indexOf('/auth') > -1 && !authCookie) {
