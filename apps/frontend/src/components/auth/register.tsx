@@ -123,9 +123,9 @@ export function RegisterAfter({
           return track(TrackEnum.CompleteRegistration).then(() => {
             console.log('response', response.headers);
             if (response.headers.get('activate') === 'true') {
-              router.push('/auth/activate');
+              window.location.href = '/auth/activate'; // ✅ Full page reload
             } else {
-              router.push('/launches');
+              window.location.href = '/'; // ✅ Full page reload (middleware will redirect to /launches)
             }
           });
         } else {
