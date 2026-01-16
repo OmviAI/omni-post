@@ -120,35 +120,43 @@ export function RegisterAfter({
         setLoading(false);
         if (response.status === 200) {
           fireEvents('register');
-          return track(TrackEnum.CompleteRegistration).then(async () => {
-            // Try to read JSON response first (more reliable than headers on Railway)
-            let responseData;
-            try {
-              responseData = await response.clone().json();
-            } catch (e) {
-              // Fall back to headers if JSON parsing fails
-            }
-            
-            // Check for activate (either from header or JSON)
-            const activateHeader = response.headers.get('activate');
-            const needsActivation = activateHeader === 'true' || responseData?.activate === true;
-            
-            if (needsActivation) {
-              router.push('/auth/activate');
-              return;
-            }
-            
-            // Check for onboarding header (backend sends this on successful registration)
-            // Use window.location.href instead of router.push for better Railway compatibility
-            const onboardingHeader = response.headers.get('onboarding');
-            if (onboardingHeader === 'true') {
-              window.location.href = isGeneral ? '/launches?onboarding=true' : '/analytics?onboarding=true';
-              return;
-            }
-            
-            // Fallback: redirect to login
-            router.push('/auth/login');
-          });
+          
+          // Handle redirect immediately (don't wait for tracking)
+          // Try to read JSON response first (more reliable than headers on Railway)
+          let responseData;
+          try {
+            responseData = await response.clone().json();
+          } catch (e) {
+            // Fall back to headers if JSON parsing fails
+          }
+          
+          // Check for activate (either from header or JSON)
+          const activateHeader = response.headers.get('activate');
+          const needsActivation = activateHeader === 'true' || responseData?.activate === true;
+          
+          if (needsActivation) {
+            // Track in background, don't wait
+            track(TrackEnum.CompleteRegistration).catch(() => {});
+            router.push('/auth/activate');
+            return;
+          }
+          
+          // Check for onboarding header or register: true in JSON
+          // Backend sends 'onboarding: true' header on successful registration
+          const onboardingHeader = response.headers.get('onboarding');
+          const isRegistered = onboardingHeader === 'true' || responseData?.register === true;
+          
+          if (isRegistered) {
+            // Track in background, don't wait
+            track(TrackEnum.CompleteRegistration).catch(() => {});
+            // Use window.location.href for better Railway compatibility
+            window.location.href = isGeneral ? '/launches?onboarding=true' : '/analytics?onboarding=true';
+            return;
+          }
+          
+          // Fallback: redirect to login
+          track(TrackEnum.CompleteRegistration).catch(() => {});
+          router.push('/auth/login');
         } else {
           form.setError('email', {
             message: await response.text(),
