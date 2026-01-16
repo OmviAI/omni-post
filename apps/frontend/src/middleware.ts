@@ -18,13 +18,12 @@ export async function middleware(request: NextRequest) {
     request.cookies.get('auth') ||
     request.headers.get('auth') ||
     nextUrl.searchParams.get('loggedAuth');
-
   const lng = request.cookies.has(cookieName)
     ? acceptLanguage.get(request.cookies.get(cookieName).value)
     : acceptLanguage.get(
-      request.headers.get('Accept-Language') ||
-      request.headers.get('accept-language')
-    );
+        request.headers.get('Accept-Language') ||
+          request.headers.get('accept-language')
+      );
 
   const topResponse = NextResponse.next();
 
@@ -32,33 +31,30 @@ export async function middleware(request: NextRequest) {
     topResponse.headers.set(cookieName, lng);
   }
 
-  // Skip middleware for static files
+  if (nextUrl.pathname.startsWith('/modal/') && !authCookie) {
+    return NextResponse.redirect(new URL(`/auth/login-required`, nextUrl.href));
+  }
+
   if (
     nextUrl.pathname.startsWith('/uploads/') ||
     nextUrl.pathname.startsWith('/p/') ||
-    nextUrl.pathname.startsWith('/icons/') ||
-    nextUrl.pathname.startsWith('/_next/') ||
-    nextUrl.pathname.startsWith('/api/')
+    nextUrl.pathname.startsWith('/icons/')
   ) {
     return topResponse;
   }
-
-  // Modal requires auth
-  if (nextUrl.pathname.startsWith('/modal/') && !authCookie) {
-    return NextResponse.redirect(new URL(`/auth/login-required`, request.url));
-  }
-
-  // Logout
-  if (nextUrl.pathname.startsWith('/auth/logout')) {
-    const response = NextResponse.redirect(new URL('/auth/login', request.url));
+  // If the URL is logout, delete the cookie and redirect to login
+  if (nextUrl.href.indexOf('/auth/logout') > -1) {
+    const response = NextResponse.redirect(
+      new URL('/auth/login', nextUrl.href)
+    );
     response.cookies.set('auth', '', {
       path: '/',
       ...(!process.env.NOT_SECURED
         ? {
-          secure: true,
-          httpOnly: true,
-          sameSite: 'lax', // Changed from false
-        }
+            secure: true,
+            httpOnly: true,
+            sameSite: false,
+          }
         : {}),
       maxAge: -1,
       domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
@@ -67,93 +63,89 @@ export async function middleware(request: NextRequest) {
   }
 
   const org = nextUrl.searchParams.get('org');
-
-  // Not authenticated and not on auth page
-  if (!nextUrl.pathname.startsWith('/auth') && !authCookie) {
+  const url = new URL(nextUrl).search;
+  if (nextUrl.href.indexOf('/auth') === -1 && !authCookie) {
     const providers = ['google', 'settings'];
     const findIndex = providers.find((p) => nextUrl.href.indexOf(p) > -1);
-    const url = nextUrl.clone();
-    url.pathname = '/auth';
+    const additional = !findIndex
+      ? ''
+      : (url.indexOf('?') > -1 ? '&' : '?') +
+        `provider=${(findIndex === 'settings'
+          ? process.env.POSTIZ_GENERIC_OAUTH
+            ? 'generic'
+            : 'github'
+          : findIndex
+        ).toUpperCase()}`;
+    return NextResponse.redirect(
+      new URL(`/auth${url}${additional}`, nextUrl.href)
+    );
+  }
 
-    if (findIndex) {
-      const providerName = findIndex === 'settings'
-        ? (process.env.POSTIZ_GENERIC_OAUTH ? 'generic' : 'github')
-        : findIndex;
-      url.searchParams.set('provider', providerName.toUpperCase());
+  // If the url is /auth and the cookie exists, redirect to /
+  if (nextUrl.href.indexOf('/auth') > -1 && authCookie) {
+    return NextResponse.redirect(new URL(`/${url}`, nextUrl.href));
+  }
+  if (nextUrl.href.indexOf('/auth') > -1 && !authCookie) {
+    if (org) {
+      const redirect = NextResponse.redirect(new URL(`/`, nextUrl.href));
+      redirect.cookies.set('org', org, {
+        ...(!process.env.NOT_SECURED
+          ? {
+              path: '/',
+              secure: true,
+              httpOnly: true,
+              sameSite: false,
+              domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
+            }
+          : {}),
+        expires: new Date(Date.now() + 15 * 60 * 1000),
+      });
+      return redirect;
     }
-
-    return NextResponse.redirect(url);
+    return topResponse;
   }
-
-  // Authenticated but on auth page
-  if (nextUrl.pathname.startsWith('/auth') && authCookie) {
-    const url = nextUrl.clone();
-    url.pathname = '/';
-    return NextResponse.redirect(url);
-  }
-
-  // Handle org parameter for non-authenticated users
-  if (nextUrl.pathname.startsWith('/auth') && !authCookie && org) {
-    const redirect = NextResponse.redirect(new URL('/', request.url));
-    redirect.cookies.set('org', org, {
-      ...(!process.env.NOT_SECURED
-        ? {
-          path: '/',
-          secure: true,
-          httpOnly: true,
-          sameSite: 'lax',
-          domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-        }
-        : {}),
-      expires: new Date(Date.now() + 15 * 60 * 1000),
-    });
-    return redirect;
-  }
-
   try {
-    // Handle org joining for authenticated users
-    if (org && authCookie) {
+    if (org) {
       const { id } = await (
         await internalFetch('/user/join-org', {
-          body: JSON.stringify({ org }),
+          body: JSON.stringify({
+            org,
+          }),
           method: 'POST',
         })
       ).json();
-
-      const url = nextUrl.clone();
-      url.pathname = '/';
-      url.searchParams.set('added', 'true');
-      url.searchParams.delete('org');
-
-      const redirect = NextResponse.redirect(url);
+      const redirect = NextResponse.redirect(
+        new URL(`/?added=true`, nextUrl.href)
+      );
       if (id) {
         redirect.cookies.set('showorg', id, {
           ...(!process.env.NOT_SECURED
             ? {
-              path: '/',
-              secure: true,
-              httpOnly: true,
-              sameSite: 'lax',
-              domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-            }
+                path: '/',
+                secure: true,
+                httpOnly: true,
+                sameSite: false,
+                domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
+              }
             : {}),
           expires: new Date(Date.now() + 15 * 60 * 1000),
         });
       }
       return redirect;
     }
-
-    // Redirect root to appropriate dashboard
     if (nextUrl.pathname === '/') {
-      const url = nextUrl.clone();
-      url.pathname = !!process.env.IS_GENERAL ? '/launches' : '/analytics';
-      return NextResponse.redirect(url);
+      return NextResponse.redirect(
+        new URL(
+          !!process.env.IS_GENERAL ? '/launches' : `/analytics`,
+          nextUrl.href
+        )
+      );
     }
 
     return topResponse;
   } catch (err) {
-    console.log('Middleware error:', err);
-    return NextResponse.redirect(new URL('/auth/logout', request.url));
+    console.log('err', err);
+    return NextResponse.redirect(new URL('/auth/logout', nextUrl.href));
   }
 }
 
