@@ -161,22 +161,21 @@ export function RegisterAfter({
           if (isRegistered) {
             // Track in background, don't wait
             track(TrackEnum.CompleteRegistration).catch(() => {});
-            // Use window.location.replace for immediate redirect (prevents back button issues)
-            // This is more reliable than window.location.href on Railway
-            // Build redirect URL explicitly to ensure it's correct
+            
+            // Build redirect URL using URL object to ensure proper formatting
             const redirectPath = isGeneral ? '/launches' : '/analytics';
-            const redirectUrl = `${redirectPath}?onboarding=true`;
+            const redirectUrl = new URL(redirectPath + '?onboarding=true', window.location.origin);
+            
             console.log('[Register] Registration successful');
             console.log('[Register] isGeneral:', isGeneral);
             console.log('[Register] redirectPath:', redirectPath);
-            console.log('[Register] redirectUrl:', redirectUrl);
+            console.log('[Register] redirectUrl.href:', redirectUrl.href);
+            console.log('[Register] redirectUrl.pathname:', redirectUrl.pathname);
+            console.log('[Register] redirectUrl.search:', redirectUrl.search);
             console.log('[Register] Current URL:', window.location.href);
             
-            // Force immediate redirect - must happen synchronously
-            // Use absolute URL to ensure it works correctly
-            const fullRedirectUrl = window.location.origin + redirectUrl;
-            console.log('[Register] Full redirect URL:', fullRedirectUrl);
-            window.location.replace(fullRedirectUrl);
+            // Force immediate redirect using the properly constructed URL
+            window.location.replace(redirectUrl.href);
             // Return immediately to prevent any further code execution
             return;
           }

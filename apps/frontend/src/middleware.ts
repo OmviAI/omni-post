@@ -64,7 +64,13 @@ export async function middleware(request: NextRequest) {
 
   const org = nextUrl.searchParams.get('org');
   const url = new URL(nextUrl).search;
-  if (nextUrl.href.indexOf('/auth') === -1 && !authCookie) {
+  
+  // Allow onboarding routes to pass through without auth cookie (coming from registration)
+  const isOnboardingRoute = 
+    (nextUrl.pathname === '/launches' || nextUrl.pathname === '/analytics') &&
+    nextUrl.searchParams.has('onboarding');
+  
+  if (nextUrl.href.indexOf('/auth') === -1 && !authCookie && !isOnboardingRoute) {
     const providers = ['google', 'settings'];
     const findIndex = providers.find((p) => nextUrl.href.indexOf(p) > -1);
     const additional = !findIndex
