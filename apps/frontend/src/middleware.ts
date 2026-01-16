@@ -85,7 +85,9 @@ export async function middleware(request: NextRequest) {
   if (nextUrl.href.indexOf('/auth') > -1 && authCookie) {
     // If onboarding query param is present, redirect to launches/analytics instead of staying on /auth
     if (nextUrl.searchParams.has('onboarding')) {
-      const onboardingRedirect = !!process.env.IS_GENERAL ? '/launches?onboarding=true' : '/analytics?onboarding=true';
+      const isGeneral = !!process.env.IS_GENERAL;
+      const onboardingRedirect = isGeneral ? '/launches?onboarding=true' : '/analytics?onboarding=true';
+      console.log('[Middleware] Redirecting /auth?onboarding=true to:', onboardingRedirect, 'IS_GENERAL:', process.env.IS_GENERAL);
       return NextResponse.redirect(new URL(onboardingRedirect, nextUrl.href));
     }
     // Otherwise, redirect to root
