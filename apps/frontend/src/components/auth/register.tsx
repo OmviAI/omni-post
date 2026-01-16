@@ -120,71 +120,13 @@ export function RegisterAfter({
         setLoading(false);
         if (response.status === 200) {
           fireEvents('register');
-          
-          // Handle redirect immediately (don't wait for tracking)
-          // Try to read JSON response first (more reliable than headers on Railway)
-          let responseData;
-          try {
-            responseData = await response.clone().json();
-            console.log('[Register] Response data:', responseData);
-          } catch (e) {
-            console.warn('[Register] Failed to parse JSON response:', e);
-            // Fall back to headers if JSON parsing fails
-          }
-          
-          // Check for activate (either from header or JSON)
-          const activateHeader = response.headers.get('activate');
-          const needsActivation = activateHeader === 'true' || responseData?.activate === true;
-          
-          if (needsActivation) {
-            console.log('[Register] Activation required, redirecting to /auth/activate');
-            // Track in background, don't wait
-            track(TrackEnum.CompleteRegistration).catch(() => {});
-            window.location.replace('/auth/activate');
-            return;
-          }
-          
-          // Check for onboarding header or register: true in JSON
-          // Backend sends 'onboarding: true' header on successful registration
-          // For Railway, we rely primarily on JSON response since headers might not be accessible
-          const onboardingHeader = response.headers.get('onboarding');
-          const isRegistered = onboardingHeader === 'true' || 
-                               responseData?.register === true || 
-                               responseData?.register === 'true';
-          
-          console.log('[Register] Checking registration status:', {
-            onboardingHeader,
-            responseDataRegister: responseData?.register,
-            isRegistered
+          return track(TrackEnum.CompleteRegistration).then(() => {
+            if (response.headers.get('activate') === 'true') {
+              router.push('/auth/activate');
+            } else {
+              router.push('/auth/login');
+            }
           });
-          
-          if (isRegistered) {
-            // Track in background, don't wait
-            track(TrackEnum.CompleteRegistration).catch(() => {});
-            
-            // Build redirect URL using URL object to ensure proper formatting
-            const redirectPath = isGeneral ? '/launches' : '/analytics';
-            const redirectUrl = new URL(redirectPath + '?onboarding=true', window.location.origin);
-            
-            console.log('[Register] Registration successful');
-            console.log('[Register] isGeneral:', isGeneral);
-            console.log('[Register] redirectPath:', redirectPath);
-            console.log('[Register] redirectUrl.href:', redirectUrl.href);
-            console.log('[Register] redirectUrl.pathname:', redirectUrl.pathname);
-            console.log('[Register] redirectUrl.search:', redirectUrl.search);
-            console.log('[Register] Current URL:', window.location.href);
-            
-            // Force immediate redirect using the properly constructed URL
-            window.location.replace(redirectUrl.href);
-            // Return immediately to prevent any further code execution
-            return;
-          }
-          
-          console.warn('[Register] Registration succeeded but redirect condition not met, falling back to login');
-          
-          // Fallback: redirect to login
-          track(TrackEnum.CompleteRegistration).catch(() => {});
-          router.push('/auth/login');
         } else {
           form.setError('email', {
             message: await response.text(),
