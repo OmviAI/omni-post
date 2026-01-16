@@ -22,7 +22,8 @@ async function start() {
   const app = await NestFactory.create(AppModule, {
     rawBody: true,
     cors: {
-      ...(!process.env.NOT_SECURED ? { credentials: true } : {}),
+      // ...(!process.env.NOT_SECURED ? { credentials: true } : {}),
+      credentials: true,
       allowedHeaders: [
         'Content-Type',
         'Authorization',
@@ -40,6 +41,7 @@ async function start() {
         'http://localhost:6274',
         ...(process.env.MAIN_URL ? [process.env.MAIN_URL] : []),
       ],
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     },
   });
 
@@ -61,7 +63,7 @@ async function start() {
 
   loadSwagger(app);
 
-  const port = process.env.PORT || 3000;
+  const port = process.env.BACKEND_PORT || process.env.PORT || 3000;
 
   try {
     await app.listen(port);

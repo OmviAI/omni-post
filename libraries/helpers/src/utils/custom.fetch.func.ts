@@ -44,7 +44,8 @@ export const customFetch = (
             ?.split('=')[1];
 
     const fetchRequest = await fetch(params.baseUrl + url, {
-      ...(secured ? { credentials: 'include' } : {}),
+      // ...(secured ? { credentials: 'include' } : {}),
+      credentials: 'include',
       ...(newRequestObject || options),
       headers: {
         ...(showorg
