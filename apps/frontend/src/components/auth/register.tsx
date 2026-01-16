@@ -164,11 +164,11 @@ export function RegisterAfter({
             // Use window.location.replace for immediate redirect (prevents back button issues)
             // This is more reliable than window.location.href on Railway
             const redirectUrl = isGeneral ? '/launches?onboarding=true' : '/analytics?onboarding=true';
-            console.log('[Register] Registration successful, redirecting to:', redirectUrl);
-            // Use setTimeout(0) to ensure redirect happens after current execution context
-            setTimeout(() => {
-              window.location.replace(redirectUrl);
-            }, 0);
+            console.log('[Register] Registration successful, redirecting to:', redirectUrl, 'Current URL:', window.location.href);
+            
+            // Force immediate redirect - must happen synchronously
+            window.location.replace(redirectUrl);
+            // Return immediately to prevent any further code execution
             return;
           }
           
