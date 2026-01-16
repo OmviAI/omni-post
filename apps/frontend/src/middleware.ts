@@ -64,13 +64,7 @@ export async function middleware(request: NextRequest) {
 
   const org = nextUrl.searchParams.get('org');
   const url = new URL(nextUrl).search;
-  
-  // Allow onboarding routes to pass through without auth cookie (coming from registration)
-  const isOnboardingRoute = 
-    (nextUrl.pathname === '/launches' || nextUrl.pathname === '/analytics') &&
-    nextUrl.searchParams.has('onboarding');
-  
-  if (nextUrl.href.indexOf('/auth') === -1 && !authCookie && !isOnboardingRoute) {
+  if (nextUrl.href.indexOf('/auth') === -1 && !authCookie) {
     const providers = ['google', 'settings'];
     const findIndex = providers.find((p) => nextUrl.href.indexOf(p) > -1);
     const additional = !findIndex
@@ -87,16 +81,8 @@ export async function middleware(request: NextRequest) {
     );
   }
 
-  // If the url is /auth and the cookie exists, redirect appropriately
+  // If the url is /auth and the cookie exists, redirect to /
   if (nextUrl.href.indexOf('/auth') > -1 && authCookie) {
-    // If onboarding query param is present, redirect to launches/analytics instead of staying on /auth
-    if (nextUrl.searchParams.has('onboarding')) {
-      const isGeneral = !!process.env.IS_GENERAL;
-      const onboardingRedirect = isGeneral ? '/launches?onboarding=true' : '/analytics?onboarding=true';
-      console.log('[Middleware] Redirecting /auth?onboarding=true to:', onboardingRedirect, 'IS_GENERAL:', process.env.IS_GENERAL);
-      return NextResponse.redirect(new URL(onboardingRedirect, nextUrl.href));
-    }
-    // Otherwise, redirect to root
     return NextResponse.redirect(new URL(`/${url}`, nextUrl.href));
   }
   if (nextUrl.href.indexOf('/auth') > -1 && !authCookie) {
