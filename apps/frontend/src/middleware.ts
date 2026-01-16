@@ -11,7 +11,6 @@ import {
 } from '@gitroom/react/translation/i18n.config';
 acceptLanguage.languages(languages);
 
-// This function can be marked `async` if using `await` inside
 export async function middleware(request: NextRequest) {
   const nextUrl = request.nextUrl;
   const authCookie =
@@ -42,7 +41,8 @@ export async function middleware(request: NextRequest) {
   ) {
     return topResponse;
   }
-  // If the URL is logout, delete the cookie and redirect to login
+
+  // ⚠️ CHANGE 1: sameSite false → 'lax'
   if (nextUrl.href.indexOf('/auth/logout') > -1) {
     const response = NextResponse.redirect(
       new URL('/auth/login', nextUrl.href)
@@ -53,7 +53,7 @@ export async function middleware(request: NextRequest) {
         ? {
             secure: true,
             httpOnly: true,
-            sameSite: false,
+            sameSite: 'lax', // ✅ Changed from false
           }
         : {}),
       maxAge: -1,
@@ -64,6 +64,7 @@ export async function middleware(request: NextRequest) {
 
   const org = nextUrl.searchParams.get('org');
   const url = new URL(nextUrl).search;
+  
   if (nextUrl.href.indexOf('/auth') === -1 && !authCookie) {
     const providers = ['google', 'settings'];
     const findIndex = providers.find((p) => nextUrl.href.indexOf(p) > -1);
@@ -81,10 +82,11 @@ export async function middleware(request: NextRequest) {
     );
   }
 
-  // If the url is /auth and the cookie exists, redirect to /
   if (nextUrl.href.indexOf('/auth') > -1 && authCookie) {
     return NextResponse.redirect(new URL(`/${url}`, nextUrl.href));
   }
+
+  // ⚠️ CHANGE 2: sameSite false → 'lax'
   if (nextUrl.href.indexOf('/auth') > -1 && !authCookie) {
     if (org) {
       const redirect = NextResponse.redirect(new URL(`/`, nextUrl.href));
@@ -94,7 +96,7 @@ export async function middleware(request: NextRequest) {
               path: '/',
               secure: true,
               httpOnly: true,
-              sameSite: false,
+              sameSite: 'lax', // ✅ Changed from false
               domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
             }
           : {}),
@@ -104,6 +106,7 @@ export async function middleware(request: NextRequest) {
     }
     return topResponse;
   }
+
   try {
     if (org) {
       const { id } = await (
@@ -117,6 +120,8 @@ export async function middleware(request: NextRequest) {
       const redirect = NextResponse.redirect(
         new URL(`/?added=true`, nextUrl.href)
       );
+      
+      // ⚠️ CHANGE 3: sameSite false → 'lax'
       if (id) {
         redirect.cookies.set('showorg', id, {
           ...(!process.env.NOT_SECURED
@@ -124,7 +129,7 @@ export async function middleware(request: NextRequest) {
                 path: '/',
                 secure: true,
                 httpOnly: true,
-                sameSite: false,
+                sameSite: 'lax', // ✅ Changed from false
                 domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
               }
             : {}),
@@ -133,11 +138,13 @@ export async function middleware(request: NextRequest) {
       }
       return redirect;
     }
+
+    // ⚠️ CHANGE 4: Use request.url instead of nextUrl.href
     if (nextUrl.pathname === '/') {
       return NextResponse.redirect(
         new URL(
           !!process.env.IS_GENERAL ? '/launches' : `/analytics`,
-          nextUrl.href
+          request.url // ✅ Changed from nextUrl.href
         )
       );
     }
@@ -149,7 +156,6 @@ export async function middleware(request: NextRequest) {
   }
 }
 
-// See "Matching Paths" below to learn more
 export const config = {
   matcher: '/((?!api/|_next/|_static/|_vercel|[\\w-]+\\.\\w+).*)',
 };
