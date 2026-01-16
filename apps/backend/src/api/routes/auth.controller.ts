@@ -68,16 +68,10 @@ export class AuthController {
         return;
       }
 
-      // ⚠️ CHANGE 1: sameSite 'none' → 'lax'
       response.cookie('auth', jwt, {
-        domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-        ...(!process.env.NOT_SECURED
-          ? {
-            secure: true,
-            httpOnly: true,
-            sameSite: 'lax', // ✅ Changed from 'none'
-          }
-          : {}),
+        secure: true,
+        httpOnly: true,
+        sameSite: 'none', // ⚠️ Cross-origin requires 'none'
         expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
       });
 
@@ -85,17 +79,11 @@ export class AuthController {
         response.header('auth', jwt);
       }
 
-      // ⚠️ CHANGE 2: sameSite 'none' → 'lax'
       if (typeof addedOrg !== 'boolean' && addedOrg?.organizationId) {
         response.cookie('showorg', addedOrg.organizationId, {
-          domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
-          ...(!process.env.NOT_SECURED
-            ? {
-              secure: true,
-              httpOnly: true,
-              sameSite: 'lax', // ✅ Changed from 'none'
-            }
-            : {}),
+          secure: true,
+          httpOnly: true,
+          sameSite: 'none', // ⚠️ Cross-origin requires 'none'
           expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
         });
 

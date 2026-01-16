@@ -29,9 +29,11 @@ export const FetchWrapperComponent: FC<Params & { children: ReactNode }> = (
 ) => {
   const { children, ...params } = props;
   const { isSecured } = useVariables();
+
+  const shouldBeSecured = process.env.NODE_ENV === 'production' ? true : isSecured;
   // @ts-ignore
   const fetchData = useRef(
-    customFetch(params, undefined, undefined, isSecured)
+    customFetch(params, undefined, undefined, shouldBeSecured)
   );
   return (
     // @ts-ignore
