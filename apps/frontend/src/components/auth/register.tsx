@@ -120,56 +120,13 @@ export function RegisterAfter({
         setLoading(false);
         if (response.status === 200) {
           fireEvents('register');
-          return track(TrackEnum.CompleteRegistration).then(async () => {
-            // Try to read JSON response first (more reliable than headers on Railway)
-            let responseData;
-            try {
-              responseData = await response.clone().json();
-            } catch (e) {
-              // Fall back to headers if JSON parsing fails
-            }
-            
-            // Check for activate (either from header or JSON)
-            const activateHeader = response.headers.get('activate');
-            const needsActivation = activateHeader === 'true' || responseData?.activate === true;
-            
-            if (needsActivation) {
+          return track(TrackEnum.CompleteRegistration).then(() => {
+            console.log('response', response.headers);
+            if (response.headers.get('activate') === 'true') {
               router.push('/auth/activate');
-              return;
+            } else {
+              router.push('/auth/launches');
             }
-            
-            // Check for onboarding header or register: true in JSON
-            // Backend sends 'onboarding: true' header on successful registration
-            const onboardingHeader = response.headers.get('onboarding');
-            const isRegistered = onboardingHeader === 'true' || responseData?.register === true;
-            
-            console.log('[Register] Registration status:', {
-              onboardingHeader,
-              responseDataRegister: responseData?.register,
-              isRegistered,
-              hasOnboardingHeader: response.headers.has('onboarding'),
-              hasActivateHeader: response.headers.has('activate')
-            });
-            
-            if (isRegistered) {
-              // Build redirect path with query parameter
-              const redirectPath = isGeneral ? '/launches?onboarding=true' : '/analytics?onboarding=true';
-              
-              console.log('[Register] isRegistered is true, redirecting to:', redirectPath);
-              console.log('[Register] About to call router.push, isGeneral:', isGeneral);
-              
-              // Use setTimeout to ensure this runs after any afterRequest handler
-              // Also ensures the redirect happens even if there are other async operations
-              setTimeout(() => {
-                console.log('[Register] Executing router.push to:', redirectPath);
-                router.push(redirectPath);
-              }, 100);
-              return;
-            }
-            
-            // Fallback: redirect to login (only if NOT registered)
-            console.log('[Register] isRegistered is false, falling back to login');
-            router.push('/auth/login');
           });
         } else {
           form.setError('email', {
