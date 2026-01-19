@@ -28,6 +28,10 @@ async function start() {
         'Content-Type',
         'Authorization',
         'x-copilotkit-runtime-client-gql-version',
+        // Allow custom auth headers for cross-origin requests
+        'auth',
+        'showorg',
+        'impersonate',
       ],
       exposedHeaders: [
         'reload',
