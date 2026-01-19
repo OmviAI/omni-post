@@ -69,9 +69,14 @@ export class AuthController {
       }
 
       response.cookie('auth', jwt, {
-        secure: true,
-        httpOnly: true,
-        sameSite: 'none', // ⚠️ Cross-origin requires 'none'
+        domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
+        ...(!process.env.NOT_SECURED
+          ? {
+              secure: true,
+              httpOnly: true,
+              sameSite: 'none',
+            }
+          : {}),
         expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
       });
 
@@ -81,9 +86,14 @@ export class AuthController {
 
       if (typeof addedOrg !== 'boolean' && addedOrg?.organizationId) {
         response.cookie('showorg', addedOrg.organizationId, {
-          secure: true,
-          httpOnly: true,
-          sameSite: 'none', // ⚠️ Cross-origin requires 'none'
+          domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
+          ...(!process.env.NOT_SECURED
+            ? {
+                secure: true,
+                httpOnly: true,
+                sameSite: 'none',
+              }
+            : {}),
           expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
         });
 
