@@ -14,10 +14,10 @@ acceptLanguage.languages(languages);
 // This function can be marked `async` if using `await` inside
 export async function middleware(request: NextRequest) {
   const nextUrl = request.nextUrl;
+   
+  // Skip RSC requests entirely - must be first check
   if (nextUrl.searchParams.has('_rsc')) {
-    return NextResponse.next({
-      headers: request.headers,
-    });
+    return NextResponse.next();
   }
 
   const authCookie =
