@@ -24,6 +24,14 @@ export async function middleware(request: NextRequest) {
     request.cookies.get('auth') ||
     request.headers.get('auth') ||
     nextUrl.searchParams.get('loggedAuth');
+  
+  // Debug logging for production issues
+  if (process.env.NODE_ENV === 'production' && nextUrl.pathname === '/launches') {
+    console.log('[Middleware] Checking auth for /launches');
+    console.log('[Middleware] Auth cookie exists:', !!request.cookies.get('auth'));
+    console.log('[Middleware] Auth header exists:', !!request.headers.get('auth'));
+    console.log('[Middleware] All cookies:', request.cookies.getAll().map(c => c.name));
+  }
     
   const lng = request.cookies.has(cookieName)
     ? acceptLanguage.get(request.cookies.get(cookieName).value)
