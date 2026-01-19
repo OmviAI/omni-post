@@ -73,6 +73,7 @@ export class AuthController {
 
       response.cookie('auth', jwt, {
         domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
+        path: '/',
         ...(!process.env.NOT_SECURED
           ? {
             secure: true,
@@ -83,13 +84,14 @@ export class AuthController {
         expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
       });
 
-      if (process.env.NOT_SECURED) {
-        response.header('auth', jwt);
-      }
+      // Always send auth header so frontend can set cookie client-side
+      // This is necessary for cross-origin cookie setting on Railway
+      response.header('auth', jwt);
 
       if (typeof addedOrg !== 'boolean' && addedOrg?.organizationId) {
         response.cookie('showorg', addedOrg.organizationId, {
           domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
+          path: '/',
           ...(!process.env.NOT_SECURED
             ? {
               secure: true,
@@ -100,9 +102,8 @@ export class AuthController {
           expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
         });
 
-        if (process.env.NOT_SECURED) {
-          response.header('showorg', addedOrg.organizationId);
-        }
+        // Always send showorg header so frontend can set cookie client-side
+        response.header('showorg', addedOrg.organizationId);
       }
 
       Sentry.metrics.count("new_user", 1);

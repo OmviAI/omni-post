@@ -34,7 +34,11 @@ async function start() {
         'onboarding',
         'activate',
         'x-copilotkit-runtime-client-gql-version',
-        ...(process.env.NOT_SECURED ? ['auth', 'showorg', 'impersonate'] : []),
+        // Always expose auth headers so frontend can set cookies client-side
+        // This is necessary for cross-origin cookie setting on Railway
+        'auth',
+        'showorg',
+        'impersonate',
       ],
       origin: [
         process.env.FRONTEND_URL,

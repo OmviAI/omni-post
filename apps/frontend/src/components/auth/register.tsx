@@ -117,15 +117,20 @@ export function RegisterAfter({
       }),
     })
       .then(async (response) => {
-        console.log('response', response.headers.get('set-cookie'));
         setLoading(false);
         if (response.status === 200) {
+          // Check if auth header is present (for client-side cookie setting)
+          const authHeader = response.headers.get('auth') || response.headers.get('Auth');
+          console.log('Registration response - auth header present:', !!authHeader);
+          console.log('Registration response - onboarding header:', response.headers.get('onboarding'));
+          
           fireEvents('register');
           return track(TrackEnum.CompleteRegistration).then(() => {
             // Use window.location.href instead of router.push to ensure
             // cookie is available and middleware can properly authenticate
             // This is especially important for Railway deployments where
             // cookies need a full page reload to be recognized
+            // Give a bit more time for the cookie to be set by layout.context
             setTimeout(() => {
               if (response.headers.get('activate') === 'true') {
                 window.location.href = '/auth/activate';
@@ -133,7 +138,7 @@ export function RegisterAfter({
                 // Use full page navigation to ensure cookie is available
                 window.location.href = '/launches';
               }
-            }, 1000);
+            }, 1500);
           });
         } else {
           form.setError('email', {
