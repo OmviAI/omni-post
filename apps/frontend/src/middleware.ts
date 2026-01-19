@@ -11,12 +11,20 @@ import {
 } from '@gitroom/react/translation/i18n.config';
 acceptLanguage.languages(languages);
 
+// This function can be marked `async` if using `await` inside
 export async function middleware(request: NextRequest) {
   const nextUrl = request.nextUrl;
+  if (nextUrl.searchParams.has('_rsc')) {
+    return NextResponse.next({
+      headers: request.headers,
+    });
+  }
+
   const authCookie =
     request.cookies.get('auth') ||
     request.headers.get('auth') ||
     nextUrl.searchParams.get('loggedAuth');
+    
   const lng = request.cookies.has(cookieName)
     ? acceptLanguage.get(request.cookies.get(cookieName).value)
     : acceptLanguage.get(
@@ -24,10 +32,10 @@ export async function middleware(request: NextRequest) {
           request.headers.get('accept-language')
       );
 
-  const topResponse = NextResponse.next();
+  const headers = new Headers(request.headers);
 
   if (lng) {
-    topResponse.headers.set(cookieName, lng);
+    headers.set(headerName, lng);
   }
 
   if (nextUrl.pathname.startsWith('/modal/') && !authCookie) {
@@ -39,10 +47,11 @@ export async function middleware(request: NextRequest) {
     nextUrl.pathname.startsWith('/p/') ||
     nextUrl.pathname.startsWith('/icons/')
   ) {
-    return topResponse;
+    return NextResponse.next({
+      headers,
+    });
   }
-
-  // ⚠️ CHANGE 1: sameSite false → 'lax'
+  // If the URL is logout, delete the cookie and redirect to login
   if (nextUrl.href.indexOf('/auth/logout') > -1) {
     const response = NextResponse.redirect(
       new URL('/auth/login', nextUrl.href)
@@ -53,7 +62,7 @@ export async function middleware(request: NextRequest) {
         ? {
             secure: true,
             httpOnly: true,
-            sameSite: 'lax', // ✅ Changed from false
+            sameSite: false,
           }
         : {}),
       maxAge: -1,
@@ -61,10 +70,8 @@ export async function middleware(request: NextRequest) {
     });
     return response;
   }
-
   const org = nextUrl.searchParams.get('org');
   const url = new URL(nextUrl).search;
-  
   if (nextUrl.href.indexOf('/auth') === -1 && !authCookie) {
     const providers = ['google', 'settings'];
     const findIndex = providers.find((p) => nextUrl.href.indexOf(p) > -1);
@@ -82,11 +89,10 @@ export async function middleware(request: NextRequest) {
     );
   }
 
+  // If the url is /auth and the cookie exists, redirect to /
   if (nextUrl.href.indexOf('/auth') > -1 && authCookie) {
     return NextResponse.redirect(new URL(`/${url}`, nextUrl.href));
   }
-
-  // ⚠️ CHANGE 2: sameSite false → 'lax'
   if (nextUrl.href.indexOf('/auth') > -1 && !authCookie) {
     if (org) {
       const redirect = NextResponse.redirect(new URL(`/`, nextUrl.href));
@@ -96,7 +102,7 @@ export async function middleware(request: NextRequest) {
               path: '/',
               secure: true,
               httpOnly: true,
-              sameSite: 'lax', // ✅ Changed from false
+              sameSite: false,
               domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
             }
           : {}),
@@ -104,9 +110,10 @@ export async function middleware(request: NextRequest) {
       });
       return redirect;
     }
-    return topResponse;
+    return NextResponse.next({
+      headers,
+    });
   }
-
   try {
     if (org) {
       const { id } = await (
@@ -120,8 +127,6 @@ export async function middleware(request: NextRequest) {
       const redirect = NextResponse.redirect(
         new URL(`/?added=true`, nextUrl.href)
       );
-      
-      // ⚠️ CHANGE 3: sameSite false → 'lax'
       if (id) {
         redirect.cookies.set('showorg', id, {
           ...(!process.env.NOT_SECURED
@@ -129,7 +134,7 @@ export async function middleware(request: NextRequest) {
                 path: '/',
                 secure: true,
                 httpOnly: true,
-                sameSite: 'lax', // ✅ Changed from false
+                sameSite: false,
                 domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
               }
             : {}),
@@ -138,24 +143,43 @@ export async function middleware(request: NextRequest) {
       }
       return redirect;
     }
-
-    // ⚠️ CHANGE 4: Use request.url instead of nextUrl.href
     if (nextUrl.pathname === '/') {
       return NextResponse.redirect(
         new URL(
           !!process.env.IS_GENERAL ? '/launches' : `/analytics`,
-          request.url // ✅ Changed from nextUrl.href
+          nextUrl.href
         )
       );
     }
-
-    return topResponse;
+    const next = NextResponse.next({
+      headers,
+    });
+    if (
+      nextUrl.pathname === '/marketplace/seller' ||
+      nextUrl.pathname === '/marketplace/buyer'
+    ) {
+      const type = nextUrl.pathname.split('/marketplace/')[1].split('/')[0];
+      next.cookies.set('marketplace', type === 'seller' ? 'seller' : 'buyer', {
+        path: '/',
+        ...(!process.env.NOT_SECURED
+          ? {
+              secure: true,
+              httpOnly: true,
+              sameSite: false,
+            }
+          : {}),
+        expires: new Date(Date.now() + 15 * 60 * 1000),
+        domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
+      });
+    }
+    return next;
   } catch (err) {
     console.log('err', err);
     return NextResponse.redirect(new URL('/auth/logout', nextUrl.href));
   }
 }
 
+// See "Matching Paths" below to learn more
 export const config = {
   matcher: '/((?!api/|_next/|_static/|_vercel|[\\w-]+\\.\\w+).*)',
 };
