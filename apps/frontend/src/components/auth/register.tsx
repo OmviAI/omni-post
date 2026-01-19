@@ -122,19 +122,18 @@ export function RegisterAfter({
         if (response.status === 200) {
           fireEvents('register');
           return track(TrackEnum.CompleteRegistration).then(() => {
-            console.log('response', response.headers);
+            // Use window.location.href instead of router.push to ensure
+            // cookie is available and middleware can properly authenticate
+            // This is especially important for Railway deployments where
+            // cookies need a full page reload to be recognized
             setTimeout(() => {
               if (response.headers.get('activate') === 'true') {
-                router.push('/auth/activate');
+                window.location.href = '/auth/activate';
               } else {
-                router.push('/launches');
+                // Use full page navigation to ensure cookie is available
+                window.location.href = '/launches';
               }
             }, 1000);
-            // if (response.headers.get('activate') === 'true') {
-            //   router.push('/auth/activate');
-            // } else {
-            //   router.push('/');
-            // }
           });
         } else {
           form.setError('email', {
