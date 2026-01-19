@@ -117,16 +117,24 @@ export function RegisterAfter({
       }),
     })
       .then(async (response) => {
+        console.log('response', response.headers.get('set-cookie'));
         setLoading(false);
         if (response.status === 200) {
           fireEvents('register');
           return track(TrackEnum.CompleteRegistration).then(() => {
             console.log('response', response.headers);
-            if (response.headers.get('activate') === 'true') {
-              router.push('/auth/activate');
-            } else {
-              router.push('/');
-            }
+            setTimeout(() => {
+              if (response.headers.get('activate') === 'true') {
+                router.push('/auth/activate');
+              } else {
+                router.push('/launches');
+              }
+            }, 1000);
+            // if (response.headers.get('activate') === 'true') {
+            //   router.push('/auth/activate');
+            // } else {
+            //   router.push('/');
+            // }
           });
         } else {
           form.setError('email', {

@@ -64,7 +64,10 @@ export class AuthController {
 
       if (activationRequired) {
         response.header('activate', 'true');
-        response.status(200).json({ activate: true });
+        response.status(200).json({
+          activate: true,
+          redirect: '/auth/activate'
+        });
         return;
       }
 
@@ -72,10 +75,10 @@ export class AuthController {
         domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
         ...(!process.env.NOT_SECURED
           ? {
-              secure: true,
-              httpOnly: true,
-              sameSite: 'none',
-            }
+            secure: true,
+            httpOnly: true,
+            sameSite: 'none',
+          }
           : {}),
         expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
       });
@@ -89,10 +92,10 @@ export class AuthController {
           domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
           ...(!process.env.NOT_SECURED
             ? {
-                secure: true,
-                httpOnly: true,
-                sameSite: 'none',
-              }
+              secure: true,
+              httpOnly: true,
+              sameSite: 'none',
+            }
             : {}),
           expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
         });
@@ -106,6 +109,7 @@ export class AuthController {
       response.header('onboarding', 'true');
       response.status(200).json({
         register: true,
+        redirect: '/' // Add redirect instruction
       });
     } catch (e: any) {
       response.status(400).send(e.message);
