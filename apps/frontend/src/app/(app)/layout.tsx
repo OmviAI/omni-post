@@ -18,6 +18,7 @@ import { FacebookComponent } from '@gitroom/frontend/components/layout/facebook.
 import { headers } from 'next/headers';
 import { headerName } from '@gitroom/react/translation/i18n.config';
 import { HtmlComponent } from '@gitroom/frontend/components/layout/html.component';
+import type { Metadata } from 'next';
 // import dynamicLoad from 'next/dynamic';
 // const SetTimezone = dynamicLoad(
 //   () => import('@gitroom/frontend/components/layout/set.timezone'),
@@ -32,6 +33,18 @@ const jakartaSans = Plus_Jakarta_Sans({
   subsets: ['latin'],
 });
 
+export const metadata: Metadata = {
+  title: 'Prism',
+  description: 'Prism - Social Media Management Platform',
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon.png', type: 'image/png' },
+    ],
+    apple: '/favicon.png',
+  },
+};
+
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const allHeaders = headers();
   const Plausible = !!process.env.STRIPE_PUBLISHABLE_KEY
@@ -39,9 +52,6 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     : Fragment;
   return (
     <html>
-      <head>
-        <link rel="icon" href="/favicon.ico" sizes="any" />
-      </head>
       <body
         className={clsx(jakartaSans.className, 'dark text-primary !bg-primary')}
       >
