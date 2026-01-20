@@ -8,6 +8,7 @@ import { Plus_Jakarta_Sans } from 'next/font/google';
 import clsx from 'clsx';
 import { VariableContextComponent } from '@gitroom/react/helpers/variable.context';
 import UtmSaver from '@gitroom/helpers/utils/utm.saver';
+import type { Metadata } from 'next';
 
 const jakartaSans = Plus_Jakarta_Sans({
   weight: ['600', '500'],
@@ -15,12 +16,21 @@ const jakartaSans = Plus_Jakarta_Sans({
   subsets: ['latin'],
 });
 
+export const metadata: Metadata = {
+  title: 'Prism',
+  description: 'Prism - Social Media Management Platform',
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon.png', type: 'image/png' },
+    ],
+    apple: '/favicon.png',
+  },
+};
+
 export default async function AppLayout({ children }: { children: ReactNode }) {
   return (
     <html>
-      <head>
-        <link rel="icon" href="/favicon.ico" sizes="any" />
-      </head>
       <body
         className={clsx(jakartaSans.className, 'dark text-primary !bg-primary')}
       >

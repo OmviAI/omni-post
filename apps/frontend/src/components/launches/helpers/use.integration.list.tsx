@@ -7,9 +7,23 @@ import useSWR from 'swr';
 export const useIntegrationList = () => {
   const fetch = useFetch();
 
-  const load = useCallback(async (path: string) => {
-    return (await (await fetch(path)).json()).integrations;
-  }, []);
+  const load = useCallback(
+    async (path: string) => {
+      try {
+        const response = await fetch(path);
+        
+        if (!response.ok) {
+          return [];
+        }
+        
+        const data = await response.json();
+        return data.integrations || [];
+      } catch (error) {
+        return [];
+      }
+    },
+    [fetch]
+  );
 
   return useSWR('/integrations/list', load, {
     revalidateOnFocus: false,
