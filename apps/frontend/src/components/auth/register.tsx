@@ -164,18 +164,18 @@ export function RegisterAfter({
               {t('sign_up', 'Sign Up')}
             </h1>
           </div>
-          <div className="text-[14px] mt-[32px] mb-[12px]">{t('continue_with', 'Continue With')}</div>
+          {/* <div className="text-[14px] mt-[32px] mb-[12px]">{t('continue_with', 'Continue With')}</div> */}
           <div className="flex flex-col">
             {!isAfterProvider &&
               (!isGeneral ? (
                 <GithubProvider />
               ) : (
                 <div className="gap-[8px] flex">
-                  {genericOauth && isGeneral ? (
+                  {/* {genericOauth && isGeneral ? (
                     <OauthProvider />
                   ) : (
                     <GoogleProvider />
-                  )}
+                  )} */}
                   {!!neynarClientId && <FarcasterProvider />}
                   {billingEnabled && <WalletProvider />}
                 </div>
@@ -186,9 +186,9 @@ export function RegisterAfter({
                 <div
                   className={`absolute z-[1] justify-center items-center w-full start-0 -top-[4px] flex`}
                 >
-                  <div className="px-[16px]">
+                  {/* <div className="px-[16px]">
                     {t('or', 'or')}
-                  </div>
+                  </div> */}
                 </div>
               </div>
             )}

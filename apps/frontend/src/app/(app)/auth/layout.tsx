@@ -6,7 +6,6 @@ import Image from 'next/image';
 import loadDynamic from 'next/dynamic';
 // import { LogoTextComponent } from '@gitroom/frontend/components/ui/logo-text.component';
 // import { Logo } from '@gitroom/frontend/components/new-layout/logo';
-import { TestimonialComponent } from '@gitroom/frontend/components/auth/testimonial.component';
 const ReturnUrlComponent = loadDynamic(() => import('./return.url.component'));
 export default async function AuthLayout({
   children,
@@ -34,14 +33,10 @@ export default async function AuthLayout({
           <div className="flex">{children}</div>
         </div>
       </div>
-      <div className="text-[36px] flex-1 pt-[88px] hidden lg:flex flex-col items-center">
-        <div className="text-center">
-          Over <span className="text-[42px] text-[#FC69FF]">18,000+</span>{' '}
-          Entrepreneurs use
-          <br />
-          Postiz To Grow Their Social Presence
+      <div className="text-[42px] flex-1 pt-[88px] hidden lg:flex flex-col items-center justify-center">
+        <div className="text-center max-w-2xl px-8">
+          Prism is <span className="text-[#FC69FF]">Omvi's</span> communication and commerce intelligence layer — enabling organizations to listen, negotiate, and speak with governed agent autonomy
         </div>
-        <TestimonialComponent />
       </div>
     </div>
   );
