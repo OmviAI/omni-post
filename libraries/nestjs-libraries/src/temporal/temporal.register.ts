@@ -35,15 +35,16 @@ export class TemporalRegister implements OnModuleInit {
       );
 
       if (missingAttributes.length > 0) {
-        // Use Keyword (6) instead of Text (1) to avoid the 3 Text attribute limit
+        // Use Keyword (2) instead of Text (1) to avoid the 3 Text attribute limit
         // Keyword is better for exact matches on IDs anyway
         await connection.operatorService.addSearchAttributes({
           namespace: process.env.TEMPORAL_NAMESPACE || 'default',
           searchAttributes: missingAttributes.reduce((all, current) => {
             // @ts-ignore
-            // Type 6 = Keyword (for exact matches, better for IDs)
+            // Type 2 = Keyword (for exact matches, better for IDs)
             // Type 1 = Text (limited to 3 per namespace in self-hosted Temporal)
-            all[current] = 6;
+            // Type 6 = Datetime (NOT what we want for IDs!)
+            all[current] = 2;  // FIXED: was 6 (Datetime), now 2 (Keyword)
             return all;
           }, {}),
         });
