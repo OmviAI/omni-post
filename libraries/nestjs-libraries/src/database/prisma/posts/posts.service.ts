@@ -457,27 +457,47 @@ export class PostsService {
   }
 
   async startWorkflow(taskQueue: string, postId: string, orgId: string) {
-    try {
-      const workflows = this._temporalService.client
-        .getRawClient()
-        ?.workflow.list({
-          query: `postId="${postId}" AND ExecutionStatus="Running"`,
-        });
+    // TEMPORARILY DISABLED: Search attributes not yet registered
+    // Will re-enable once Elasticsearch is properly configured
+    // try {
+    //   const workflows = this._temporalService.client
+    //     .getRawClient()
+    //     ?.workflow.list({
+    //       query: `postId="${postId}" AND ExecutionStatus="Running"`,
+    //     });
 
-      for await (const executionInfo of workflows) {
-        try {
-          const workflow = await this._temporalService.client.getWorkflowHandle(
-            executionInfo.workflowId
-          );
-          if (
-            workflow &&
-            (await workflow.describe()).status.name !== 'TERMINATED'
-          ) {
-            await workflow.terminate();
-          }
-        } catch (err) {}
+    //   for await (const executionInfo of workflows) {
+    //     try {
+    //       const workflow = await this._temporalService.client.getWorkflowHandle(
+    //         executionInfo.workflowId
+    //       );
+    //       if (
+    //         workflow &&
+    //         (await workflow.describe()).status.name !== 'TERMINATED'
+    //       ) {
+    //         await workflow.terminate();
+    //       }
+    //     } catch (err) {
+    //       console.error('⚠️ Error terminating existing workflow:', err);
+    //     }
+    //   }
+    // } catch (err) {
+    //   console.error('⚠️ Error listing workflows:', err);
+    // }
+
+    // Try to terminate existing workflow by ID (doesn't need search attributes)
+    try {
+      const existingWorkflow = await this._temporalService.client.getWorkflowHandle(
+        `post_${postId}`
+      );
+      const desc = await existingWorkflow.describe();
+      if (desc.status.name !== 'TERMINATED') {
+        await existingWorkflow.terminate();
+        console.log('⚠️ Terminated existing workflow:', `post_${postId}`);
       }
-    } catch (err) {}
+    } catch (err) {
+      // Workflow doesn't exist or already terminated - this is fine
+    }
 
     try {
       await this._temporalService.client
@@ -492,18 +512,25 @@ export class PostsService {
               organizationId: orgId,
             },
           ],
-          typedSearchAttributes: new TypedSearchAttributes([
-            {
-              key: postIdSearchParam,
-              value: postId,
-            },
-            {
-              key: organizationId,
-              value: orgId,
-            },
-          ]),
+          // TEMPORARILY DISABLED: Search attributes not yet registered
+          // typedSearchAttributes: new TypedSearchAttributes([
+          //   {
+          //     key: postIdSearchParam,
+          //     value: postId,
+          //   },
+          //   {
+          //     key: organizationId,
+          //     value: orgId,
+          //   },
+          // ]),
         });
-    } catch (err) {}
+      console.log('✅ Workflow started successfully:', `post_${postId}`);
+    } catch (err) {
+      console.error('❌ CRITICAL ERROR starting workflow:', err);
+      console.error('Workflow ID:', `post_${postId}`);
+      console.error('Task Queue:', taskQueue);
+      throw err; // Re-throw so outer catch can see it
+    }
   }
 
   async createPost(orgId: string, body: CreatePostDto): Promise<any[]> {
@@ -536,7 +563,12 @@ export class PostsService {
         post.settings.__type.split('-')[0].toLowerCase(),
         posts[0].id,
         orgId
-      ).catch((err) => {});
+      ).catch((err) => {
+        console.error('❌ ERROR STARTING WORKFLOW:', err);
+        console.error('Task Queue:', post.settings.__type.split('-')[0].toLowerCase());
+        console.error('Post ID:', posts[0].id);
+        console.error('Org ID:', orgId);
+      });
 
       Sentry.metrics.count('post_created', 1);
       postList.push({
