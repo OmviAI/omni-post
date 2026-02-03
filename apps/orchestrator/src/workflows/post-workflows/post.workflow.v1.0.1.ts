@@ -59,6 +59,8 @@ export async function postWorkflowV101({
   organizationId: string;
   postNow?: boolean;
 }) {
+  console.log(`[Workflow] postWorkflowV101 started - PostId: ${postId}, OrgId: ${organizationId}, TaskQueue: ${taskQueue}, PostNow: ${postNow}`);
+  
   // Dynamic task queue, for concurrency
   const {
     postSocial,
@@ -81,8 +83,11 @@ export async function postWorkflowV101({
   const postsList = await getPostsList(organizationId, postId);
   const [post] = postsList;
 
+  console.log(`[Workflow] Retrieved posts - PostId: ${postId}, PostsCount: ${postsList.length}, PostExists: ${!!post}, PostState: ${post?.state}, PostNow: ${postNow}`);
+
   // in case doesn't exists for some reason, fail it
   if (!post || (!postNow && post.state !== 'QUEUE')) {
+    console.log(`[Workflow] Early return - PostId: ${postId}, Reason: ${!post ? 'Post not found' : 'Post state is not QUEUE'}`);
     return;
   }
 
@@ -97,6 +102,7 @@ export async function postWorkflowV101({
 
   // if refresh is needed from last time, let's inform the user
   if (post.integration?.refreshNeeded) {
+    console.log(`[Workflow] Refresh needed - PostId: ${postId}, Provider: ${post.integration?.providerIdentifier}, IntegrationName: ${post?.integration?.name}`);
     await inAppNotification(
       post.organizationId,
       `We couldn't post to ${post.integration?.providerIdentifier} for ${post?.integration?.name}`,
@@ -110,6 +116,7 @@ export async function postWorkflowV101({
 
   // if it's disabled, inform the user
   if (post.integration?.disabled) {
+    console.log(`[Workflow] Integration disabled - PostId: ${postId}, Provider: ${post.integration?.providerIdentifier}, IntegrationName: ${post?.integration?.name}`);
     await inAppNotification(
       post.organizationId,
       `We couldn't post to ${post.integration?.providerIdentifier} for ${post?.integration?.name}`,
@@ -120,6 +127,8 @@ export async function postWorkflowV101({
     );
     return;
   }
+
+  console.log(`[Workflow] Integration check passed - PostId: ${postId}, Provider: ${post.integration?.providerIdentifier}, IntegrationId: ${post.integration?.id}, HasToken: ${!!post.integration?.token}`);
 
   // Do we need to post comment for this social?
   const toComment =
@@ -135,11 +144,12 @@ export async function postWorkflowV101({
       try {
         // first post the main post
         if (i === 0) {
-          postsResults.push(
-            ...(await postSocial(post.integration as Integration, [
-              postsList[i],
-            ]))
-          );
+          console.log(`[Workflow] Calling postSocial - PostId: ${postId}, PostIndex: ${i}, IntegrationId: ${post.integration?.id}, Provider: ${post.integration?.providerIdentifier}`);
+          const socialResults = await postSocial(post.integration as Integration, [
+            postsList[i],
+          ]);
+          console.log(`[Workflow] postSocial completed - PostId: ${postId}, ResultsCount: ${socialResults?.length || 0}, Results: ${JSON.stringify(socialResults)}`);
+          postsResults.push(...socialResults);
 
           // then post the comments if any
         } else {
@@ -164,14 +174,17 @@ export async function postWorkflowV101({
         }
 
         // mark post as successful
+        console.log(`[Workflow] Updating post - PostId: ${postId}, ResultPostId: ${postsResults[i]?.postId}, ReleaseURL: ${postsResults[i]?.releaseURL}`);
         await updatePost(
           postsList[i].id,
           postsResults[i].postId,
           postsResults[i].releaseURL
         );
+        console.log(`[Workflow] Post updated successfully - PostId: ${postId}`);
 
         if (i === 0) {
           // send notification on a sucessful post
+          console.log(`[Workflow] Sending success notification - PostId: ${postId}, ReleaseURL: ${postsResults[0].releaseURL}`);
           await inAppNotification(
             post.integration.organizationId,
             `Your post has been published on ${capitalize(
@@ -183,28 +196,35 @@ export async function postWorkflowV101({
             true,
             true
           );
+          console.log(`[Workflow] Success notification sent - PostId: ${postId}`);
         }
 
         // break the current while to move to the next post
         break;
       } catch (err) {
+        console.error(`[Workflow] ERROR in post loop - PostId: ${postId}, PostIndex: ${i}, Error: ${err instanceof Error ? err.message : err}, ErrorType: ${err instanceof ActivityFailure ? 'ActivityFailure' : typeof err}, Stack: ${err instanceof Error ? err.stack : 'N/A'}`);
+        
         // if token refresh is needed, do it and repeat
         if (
           err instanceof ActivityFailure &&
           err.cause instanceof ApplicationFailure &&
           err.cause.type === 'refresh_token'
         ) {
+          console.log(`[Workflow] Token refresh needed - PostId: ${postId}, Attempting refresh...`);
           const refresh = await refreshToken(post.integration);
           if (!refresh || !refresh.accessToken) {
+            console.error(`[Workflow] Token refresh failed - PostId: ${postId}, Changing state to ERROR`);
             await changeState(postsList[0].id, 'ERROR', err, postsList);
             return false;
           }
 
+          console.log(`[Workflow] Token refreshed successfully - PostId: ${postId}, Retrying...`);
           post.integration.token = refresh.accessToken;
           continue;
         }
 
         // for other errors, change state and inform the user if needed
+        console.error(`[Workflow] Changing post state to ERROR - PostId: ${postId}, Error: ${err instanceof Error ? err.message : err}`);
         await changeState(postsList[0].id, 'ERROR', err, postsList);
 
         // specific case for bad body errors

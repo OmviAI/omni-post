@@ -142,19 +142,26 @@ export class PostActivity {
 
   @ActivityMethod()
   async postSocial(integration: Integration, posts: Post[]) {
+    console.log(`[Post Activity] postSocial called - Provider: ${integration.providerIdentifier}, IntegrationId: ${integration.id}, IntegrationName: ${integration.name}, PostsCount: ${posts.length}, HasToken: ${!!integration.token}, TokenLength: ${integration.token?.length || 0}`);
+    
     try {
       const getIntegration = this._integrationManager.getSocialIntegration(
         integration.providerIdentifier
       );
 
       if (!getIntegration) {
+        console.error(`[Post Activity] Integration not found - Provider: ${integration.providerIdentifier}`);
         throw new Error(`Integration ${integration.providerIdentifier} not found`);
       }
+
+      console.log(`[Post Activity] Integration found - Identifier: ${getIntegration.identifier}, Name: ${getIntegration.name}`);
 
       const newPosts = await this._postService.updateTags(
         integration.organizationId,
         posts
       );
+
+      console.log(`[Post Activity] Tags updated - OriginalCount: ${posts.length}, ProcessedCount: ${newPosts?.length || 0}`);
 
       const postDetails = await Promise.all(
         (newPosts || []).map(async (p) => {
@@ -167,18 +174,24 @@ export class PostActivity {
             getIntegration.mentionFormat
           );
 
+          const media = await this._postService.updateMedia(
+            p.id,
+            JSON.parse(p.image || '[]'),
+            getIntegration?.convertToJPEG || false
+          );
+
+          console.log(`[Post Activity] Post processed - PostId: ${p.id}, MessageLength: ${message?.length}, MediaCount: ${media?.length || 0}, MessagePreview: ${message?.substring(0, 100)}`);
+
           return {
             id: p.id,
             message,
             settings: JSON.parse(p.settings || '{}'),
-            media: await this._postService.updateMedia(
-              p.id,
-              JSON.parse(p.image || '[]'),
-              getIntegration?.convertToJPEG || false
-            ),
+            media,
           };
         })
       );
+
+      console.log(`[Post Activity] Calling integration.post - IntegrationId: ${integration.internalId}, PostDetailsCount: ${postDetails.length}, FirstPostId: ${postDetails[0]?.id}, FirstMessageLength: ${postDetails[0]?.message?.length}`);
 
       const result = await getIntegration.post(
         integration.internalId,
@@ -187,8 +200,11 @@ export class PostActivity {
         integration
       );
 
+      console.log(`[Post Activity] integration.post completed - ResultsCount: ${result?.length || 0}, Results: ${JSON.stringify(result)}`);
+
       return result;
     } catch (error: any) {
+      console.error(`[Post Activity] ERROR in postSocial - Provider: ${integration.providerIdentifier}, Error: ${error?.message || error}, Stack: ${error?.stack}`);
       throw error;
     }
   }

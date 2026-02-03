@@ -299,11 +299,16 @@ export class XProvider extends SocialAbstract implements SocialProvider {
   }
 
   private async getClient(accessToken: string) {
+    console.log(`[X Provider] getClient called - AccessTokenLength: ${accessToken?.length || 0}, HasApiKey: ${!!process.env.X_API_KEY}, HasApiSecret: ${!!process.env.X_API_SECRET}`);
+    
     const [accessTokenSplit, accessSecretSplit] = accessToken.split(':');
     
     if (!accessTokenSplit || !accessSecretSplit) {
+      console.error(`[X Provider] Invalid access token format - SplitCount: ${accessToken.split(':').length}, AccessTokenLength: ${accessToken?.length || 0}`);
       throw new Error('Invalid access token format');
     }
+
+    console.log(`[X Provider] Access token split successfully - TokenLength: ${accessTokenSplit.length}, SecretLength: ${accessSecretSplit.length}`);
 
     return new TwitterApi({
       appKey: process.env.X_API_KEY!,
@@ -373,9 +378,14 @@ export class XProvider extends SocialAbstract implements SocialProvider {
         | 'verified';
     }>[]
   ): Promise<PostResponse[]> {
+    console.log(`[X Provider] post called - IntegrationId: ${id}, PostDetailsCount: ${postDetails.length}, HasAccessToken: ${!!accessToken}, AccessTokenLength: ${accessToken?.length || 0}`);
+    
     try {
+      console.log(`[X Provider] Creating Twitter client - HasApiKey: ${!!process.env.X_API_KEY}, HasApiSecret: ${!!process.env.X_API_SECRET}`);
       const client = await this.getClient(accessToken);
+      console.log(`[X Provider] Twitter client created successfully`);
 
+      console.log(`[X Provider] Fetching user info...`);
       const {
         data: { username },
       } = await this.runInConcurrent(async () =>
@@ -383,13 +393,18 @@ export class XProvider extends SocialAbstract implements SocialProvider {
           'user.fields': 'username',
         })
       );
+      console.log(`[X Provider] User info fetched - Username: ${username}`);
 
       const [firstPost] = postDetails;
+      console.log(`[X Provider] Processing post - PostId: ${firstPost.id}, MessageLength: ${firstPost.message?.length || 0}, MessagePreview: ${firstPost.message?.substring(0, 100)}, MediaCount: ${firstPost.media?.length || 0}, Settings: ${JSON.stringify(firstPost.settings)}`);
 
       // upload media for the first post
+      console.log(`[X Provider] Uploading media...`);
       const uploadAll = await this.uploadMedia(client, [firstPost]);
+      console.log(`[X Provider] Media upload completed - Results: ${JSON.stringify(uploadAll)}`);
 
       const media_ids = (uploadAll[firstPost.id] || []).filter((f) => f);
+      console.log(`[X Provider] Media IDs extracted - Count: ${media_ids.length}, IDs: ${JSON.stringify(media_ids)}`);
 
       const tweetPayload = {
         ...(!firstPost?.settings?.who_can_reply_post ||
@@ -408,12 +423,17 @@ export class XProvider extends SocialAbstract implements SocialProvider {
         ...(media_ids.length ? { media: { media_ids } } : {}),
       };
 
+      console.log(`[X Provider] Tweet payload prepared - TextLength: ${tweetPayload.text?.length || 0}, HasMedia: ${!!tweetPayload.media}, MediaIds: ${tweetPayload.media?.media_ids?.join(',') || 'none'}, ReplySettings: ${tweetPayload.reply_settings || 'everyone'}, CommunityId: ${tweetPayload.community_id || 'none'}`);
+
       // @ts-ignore
+      console.log(`[X Provider] Calling Twitter API to create tweet...`);
       const { data }: { data: { id: string } } = await this.runInConcurrent(
         async () =>
           // @ts-ignore
           client.v2.tweet(tweetPayload)
       );
+
+      console.log(`[X Provider] Tweet created successfully - TweetId: ${data.id}, Username: ${username}, URL: https://twitter.com/${username}/status/${data.id}`);
 
       return [
         {
@@ -424,6 +444,7 @@ export class XProvider extends SocialAbstract implements SocialProvider {
         },
       ];
     } catch (error: any) {
+      console.error(`[X Provider] ERROR in post method - IntegrationId: ${id}, Error: ${error?.message || error}, ErrorCode: ${error?.code}, ErrorStatus: ${error?.status}, ErrorResponse: ${JSON.stringify(error?.response?.data || error?.data)}, Stack: ${error?.stack}`);
       throw error;
     }
   }

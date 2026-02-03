@@ -62,11 +62,13 @@ export abstract class SocialAbstract {
     try {
       value = await func();
     } catch (err: any) {
+      console.error(`[${this.identifier || 'SocialProvider'}] Error in runInConcurrent - Error: ${err?.message || err}, Status: ${err?.response?.status || err?.status}, Code: ${err?.code}, Response: ${JSON.stringify(err?.response?.data || err?.data)}, Stack: ${err?.stack}`);
       const handle = this.handleErrors(JSON.stringify(err));
       value = { err: true, value: 'Unknown Error', ...(handle || {}) };
     }
 
     if (value && value?.err && value?.value) {
+      console.error(`[${this.identifier || 'SocialProvider'}] Error detected after handling - Type: ${value.type}, Value: ${value.value}`);
       if (value.type === 'refresh-token') {
         throw new RefreshToken(
           '',
