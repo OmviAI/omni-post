@@ -300,6 +300,11 @@ export class XProvider extends SocialAbstract implements SocialProvider {
 
   private async getClient(accessToken: string) {
     const [accessTokenSplit, accessSecretSplit] = accessToken.split(':');
+    
+    if (!accessTokenSplit || !accessSecretSplit) {
+      throw new Error('Invalid access token format');
+    }
+
     return new TwitterApi({
       appKey: process.env.X_API_KEY!,
       appSecret: process.env.X_API_SECRET!,
@@ -368,52 +373,59 @@ export class XProvider extends SocialAbstract implements SocialProvider {
         | 'verified';
     }>[]
   ): Promise<PostResponse[]> {
-    const client = await this.getClient(accessToken);
-    const {
-      data: { username },
-    } = await this.runInConcurrent(async () =>
-      client.v2.me({
-        'user.fields': 'username',
-      })
-    );
+    try {
+      const client = await this.getClient(accessToken);
 
-    const [firstPost] = postDetails;
-
-    // upload media for the first post
-    const uploadAll = await this.uploadMedia(client, [firstPost]);
-
-    const media_ids = (uploadAll[firstPost.id] || []).filter((f) => f);
-
-    // @ts-ignore
-    const { data }: { data: { id: string } } = await this.runInConcurrent(
-      async () =>
-        // @ts-ignore
-        client.v2.tweet({
-          ...(!firstPost?.settings?.who_can_reply_post ||
-          firstPost?.settings?.who_can_reply_post === 'everyone'
-            ? {}
-            : {
-                reply_settings: firstPost?.settings?.who_can_reply_post,
-              }),
-          ...(firstPost?.settings?.community
-            ? {
-                community_id:
-                  firstPost?.settings?.community?.split('/').pop() || '',
-              }
-            : {}),
-          text: firstPost.message,
-          ...(media_ids.length ? { media: { media_ids } } : {}),
+      const {
+        data: { username },
+      } = await this.runInConcurrent(async () =>
+        client.v2.me({
+          'user.fields': 'username',
         })
-    );
+      );
 
-    return [
-      {
-        postId: data.id,
-        id: firstPost.id,
-        releaseURL: `https://twitter.com/${username}/status/${data.id}`,
-        status: 'posted',
-      },
-    ];
+      const [firstPost] = postDetails;
+
+      // upload media for the first post
+      const uploadAll = await this.uploadMedia(client, [firstPost]);
+
+      const media_ids = (uploadAll[firstPost.id] || []).filter((f) => f);
+
+      const tweetPayload = {
+        ...(!firstPost?.settings?.who_can_reply_post ||
+        firstPost?.settings?.who_can_reply_post === 'everyone'
+          ? {}
+          : {
+              reply_settings: firstPost?.settings?.who_can_reply_post,
+            }),
+        ...(firstPost?.settings?.community
+          ? {
+              community_id:
+                firstPost?.settings?.community?.split('/').pop() || '',
+            }
+          : {}),
+        text: firstPost.message,
+        ...(media_ids.length ? { media: { media_ids } } : {}),
+      };
+
+      // @ts-ignore
+      const { data }: { data: { id: string } } = await this.runInConcurrent(
+        async () =>
+          // @ts-ignore
+          client.v2.tweet(tweetPayload)
+      );
+
+      return [
+        {
+          postId: data.id,
+          id: firstPost.id,
+          releaseURL: `https://twitter.com/${username}/status/${data.id}`,
+          status: 'posted',
+        },
+      ];
+    } catch (error: any) {
+      throw error;
+    }
   }
 
   async comment(

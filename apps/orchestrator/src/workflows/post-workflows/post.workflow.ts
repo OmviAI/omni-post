@@ -132,6 +132,16 @@ export async function postWorkflow({
       try {
         // first post the main post
         if (i === 0) {
+          // Log before posting
+          await inAppNotification(
+            post.organizationId,
+            `[DEBUG] Starting post workflow`,
+            `Posting to ${post.integration?.providerIdentifier} for ${post?.integration?.name}. Post ID: ${postsList[i].id}`,
+            false,
+            false,
+            'info'
+          );
+          
           postsResults.push(
             ...(await postSocial(post.integration as Integration, [
               postsList[i],

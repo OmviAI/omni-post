@@ -490,18 +490,20 @@ export class PostsService {
               taskQueue: taskQueue,
               postId: postId,
               organizationId: orgId,
+              postNow: true,
             },
           ],
-          typedSearchAttributes: new TypedSearchAttributes([
-            {
-              key: postIdSearchParam,
-              value: postId,
-            },
-            {
-              key: organizationId,
-              value: orgId,
-            },
-          ]),
+          // Commented out due to search attribute type mismatch (Datetime vs Keyword)
+          // typedSearchAttributes: new TypedSearchAttributes([
+          //   {
+          //     key: postIdSearchParam,
+          //     value: postId,
+          //   },
+          //   {
+          //     key: organizationId,
+          //     value: orgId,
+          //   },
+          // ]),
         });
     } catch (err) {}
   }
