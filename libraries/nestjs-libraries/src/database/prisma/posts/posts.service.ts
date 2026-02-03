@@ -510,6 +510,7 @@ export class PostsService {
               taskQueue: taskQueue,
               postId: postId,
               organizationId: orgId,
+              postNow: true,
             },
           ],
           // TEMPORARILY DISABLED: Search attributes not yet registered

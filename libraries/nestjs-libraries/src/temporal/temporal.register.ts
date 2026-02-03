@@ -29,28 +29,49 @@ export class TemporalRegister implements OnModuleInit {
           namespace: process.env.TEMPORAL_NAMESPACE || 'default',
         });
 
-      const neededAttribute = ['organizationId', 'postId'];
-      const missingAttributes = neededAttribute.filter(
-        (attr) => !customAttributes[attr],
-      );
+      const neededAttributes = {
+        organizationId: 6, // Keyword
+        postId: 6, // Keyword (not Datetime!)
+      };
 
-      if (missingAttributes.length > 0) {
-        // Use Keyword (2) instead of Text (1) to avoid the 3 Text attribute limit
-        // Keyword is better for exact matches on IDs anyway
-        await connection.operatorService.addSearchAttributes({
-          namespace: process.env.TEMPORAL_NAMESPACE || 'default',
-          searchAttributes: missingAttributes.reduce((all, current) => {
-            // @ts-ignore
-            // Type 2 = Keyword (for exact matches, better for IDs)
-            // Type 1 = Text (limited to 3 per namespace in self-hosted Temporal)
-            // Type 6 = Datetime (NOT what we want for IDs!)
-            all[current] = 2;  // FIXED: was 6 (Datetime), now 2 (Keyword)
-            return all;
-          }, {}),
-        });
-        this.logger.log(
-          `Successfully registered search attributes: ${missingAttributes.join(', ')}`
-        );
+      // Find attributes that are missing or have wrong type
+      const attributesToAdd: Record<string, number> = {};
+      for (const [attrName, expectedType] of Object.entries(neededAttributes)) {
+        const existingType = customAttributes[attrName];
+        if (!existingType || existingType !== expectedType) {
+          attributesToAdd[attrName] = expectedType;
+          if (existingType && existingType !== expectedType) {
+            this.logger.warn(
+              `Search attribute ${attrName} has wrong type ${existingType}, should be ${expectedType}. Will attempt to update.`
+            );
+          }
+        }
+      }
+
+      if (Object.keys(attributesToAdd).length > 0) {
+        // Note: Temporal doesn't support updating search attribute types directly.
+        // If an attribute exists with wrong type, it needs to be removed first via Temporal CLI:
+        // tctl admin cluster remove-search-attributes --search-attribute <name>
+        // For now, we'll try to add them and log a warning if they already exist with wrong type
+        try {
+          await connection.operatorService.addSearchAttributes({
+            namespace: process.env.TEMPORAL_NAMESPACE || 'default',
+            searchAttributes: attributesToAdd,
+          });
+          this.logger.log(
+            `Successfully registered search attributes: ${Object.keys(attributesToAdd).join(', ')}`
+          );
+        } catch (error: any) {
+          if (error.message?.includes('already exists')) {
+            this.logger.error(
+              `Search attributes already exist with wrong type. Please remove them manually using Temporal CLI:\n` +
+              `tctl admin cluster remove-search-attributes --search-attribute postId --search-attribute organizationId\n` +
+              `Then restart the backend to re-register them with correct types.`
+            );
+          } else {
+            throw error;
+          }
+        }
       }
     } catch (error: any) {
       // Make this non-blocking - if search attributes fail to register,

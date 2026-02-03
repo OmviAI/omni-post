@@ -62,16 +62,17 @@ export class PostActivity {
               organizationId: post.organizationId,
             },
           ],
-          typedSearchAttributes: new TypedSearchAttributes([
-            {
-              key: postIdSearchParam,
-              value: post.id,
-            },
-            {
-              key: organizationId,
-              value: post.organizationId,
-            },
-          ]),
+          // Commented out due to search attribute type mismatch (Datetime vs Keyword)
+          // typedSearchAttributes: new TypedSearchAttributes([
+          //   {
+          //     key: postIdSearchParam,
+          //     value: post.id,
+          //   },
+          //   {
+          //     key: organizationId,
+          //     value: post.organizationId,
+          //   },
+          // ]),
         });
     }
   }
@@ -141,39 +142,55 @@ export class PostActivity {
 
   @ActivityMethod()
   async postSocial(integration: Integration, posts: Post[]) {
-    const getIntegration = this._integrationManager.getSocialIntegration(
-      integration.providerIdentifier
-    );
+    try {
+      const getIntegration = this._integrationManager.getSocialIntegration(
+        integration.providerIdentifier
+      );
 
-    const newPosts = await this._postService.updateTags(
-      integration.organizationId,
-      posts
-    );
+      if (!getIntegration) {
+        throw new Error(`Integration ${integration.providerIdentifier} not found`);
+      }
 
-    return getIntegration.post(
-      integration.internalId,
-      integration.token,
-      await Promise.all(
-        (newPosts || []).map(async (p) => ({
-          id: p.id,
-          message: stripHtmlValidation(
+      const newPosts = await this._postService.updateTags(
+        integration.organizationId,
+        posts
+      );
+
+      const postDetails = await Promise.all(
+        (newPosts || []).map(async (p) => {
+          const message = stripHtmlValidation(
             getIntegration.editor,
             p.content,
             true,
             false,
             !/<\/?[a-z][\s\S]*>/i.test(p.content),
             getIntegration.mentionFormat
-          ),
-          settings: JSON.parse(p.settings || '{}'),
-          media: await this._postService.updateMedia(
-            p.id,
-            JSON.parse(p.image || '[]'),
-            getIntegration?.convertToJPEG || false
-          ),
-        }))
-      ),
-      integration
-    );
+          );
+
+          return {
+            id: p.id,
+            message,
+            settings: JSON.parse(p.settings || '{}'),
+            media: await this._postService.updateMedia(
+              p.id,
+              JSON.parse(p.image || '[]'),
+              getIntegration?.convertToJPEG || false
+            ),
+          };
+        })
+      );
+
+      const result = await getIntegration.post(
+        integration.internalId,
+        integration.token,
+        postDetails,
+        integration
+      );
+
+      return result;
+    } catch (error: any) {
+      throw error;
+    }
   }
 
   @ActivityMethod()
