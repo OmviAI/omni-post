@@ -12,6 +12,7 @@ import { CopilotChat, CopilotKitCSSProperties } from '@copilotkit/react-ui';
 import {
   InputProps,
   UserMessageProps,
+  AssistantMessageProps,
 } from '@copilotkit/react-ui/dist/components/chat/props';
 import { Input } from '@gitroom/frontend/components/agents/agent.input';
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
@@ -34,6 +35,37 @@ import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { ExistingDataContextProvider } from '@gitroom/frontend/components/launches/helpers/use.existing.data';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 
+// Helper to get cookie value
+const getCookie = (name: string): string | null => {
+  if (typeof document === 'undefined') return null;
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
+  return null;
+};
+
+// Custom fetch that adds auth header
+const createAuthFetch = () => {
+  return (url: string, options: RequestInit = {}) => {
+    const authCookie = getCookie('auth');
+    const showorgCookie = getCookie('showorg');
+    
+    const headers = new Headers(options.headers);
+    if (authCookie && !headers.has('auth')) {
+      headers.set('auth', authCookie);
+    }
+    if (showorgCookie && !headers.has('showorg')) {
+      headers.set('showorg', showorgCookie);
+    }
+    
+    return fetch(url, {
+      ...options,
+      credentials: 'include',
+      headers,
+    });
+  };
+};
+
 export const AgentChat: FC = () => {
   const { backendUrl } = useVariables();
   const params = useParams<{ id: string }>();
@@ -47,6 +79,7 @@ export const AgentChat: FC = () => {
       runtimeUrl={backendUrl + '/copilot/agent'}
       showDevConsole={false}
       agent="postiz"
+      fetch={createAuthFetch()}
       properties={{
         integrations: properties,
       }}
@@ -79,6 +112,7 @@ You can also use me as an MCP Server, check Settings >> Public API
 `),
             }}
             UserMessage={Message}
+            AssistantMessage={Message}
             Input={NewInput}
           />
         </div>
@@ -114,14 +148,44 @@ const LoadMessages: FC<{ id: string }> = ({ id }) => {
   return null;
 };
 
-const Message: FC<UserMessageProps> = (props) => {
+const Message: FC<UserMessageProps | AssistantMessageProps> = (props) => {
   const convertContentToImagesAndVideo = useMemo(() => {
-    return (props.message?.content || '')
-      .replace(/Video: (http.*mp4\n)/g, (match, p1) => {
-        return `<video controls class="h-[150px] w-[150px] rounded-[8px] mb-[10px]"><source src="${p1.trim()}" type="video/mp4">Your browser does not support the video tag.</video>`;
+    const content = props.message?.content || '';
+    const role = (props.message as any)?.role;
+    console.log('[AgentChat] ===== MESSAGE PROCESSING =====');
+    console.log('[AgentChat] Message role:', role);
+    console.log('[AgentChat] Original content length:', content.length);
+    console.log('[AgentChat] Original content (first 500 chars):', content.substring(0, 500));
+    console.log('[AgentChat] Original content (full):', JSON.stringify(content));
+    
+    // First, try to find any image URLs in the content (for debugging)
+    const imageUrlMatches = content.match(/https?:\/\/[^\s\n]+\.(png|jpg|jpeg|gif|webp)/gi);
+    if (imageUrlMatches) {
+      console.log('[AgentChat] Found potential image URLs:', imageUrlMatches);
+    }
+    
+    let processed = content
+      // Match Video: http...mp4 followed by newline or end of string
+      .replace(/Video:\s*(https?:\/\/[^\s\n]+\.mp4)(\n|$| )/g, (match, p1, p2) => {
+        const url = p1.trim();
+        console.log('[AgentChat] ✓ Matched video URL:', url);
+        return `<video controls class="h-[150px] w-[150px] rounded-[8px] mb-[10px]"><source src="${url}" type="video/mp4">Your browser does not support the video tag.</video>${p2}`;
       })
-      .replace(/Image: (http.*\n)/g, (match, p1) => {
-        return `<img src="${p1.trim()}" class="h-[150px] w-[150px] max-w-full border border-newBgColorInner" />`;
+      // Match Image: http... or https... (more flexible - handles various formats)
+      // Pattern 1: "Image: https://..." with optional whitespace
+      .replace(/Image:\s*(https?:\/\/[^\s\n<>"]+)(\n|$| |<|")/g, (match, p1, p2) => {
+        const url = p1.trim();
+        console.log('[AgentChat] ✓ Matched image URL (Pattern 1):', url);
+        return `<img src="${url}" alt="Generated image" class="h-[150px] w-[150px] max-w-full border border-newBgColorInner rounded-[8px] mb-[10px] object-cover" onerror="console.error('Image failed to load:', this.src)" />${p2}`;
+      })
+      // Pattern 2: Just a URL that looks like an image (fallback)
+      .replace(/(^|\n)(https?:\/\/[^\s\n<>"]+\.(png|jpg|jpeg|gif|webp))(\n|$| )/g, (match, p1, p2, p3, p4) => {
+        // Only match if it's not already inside an img tag
+        if (!match.includes('<img')) {
+          console.log('[AgentChat] ✓ Matched standalone image URL (Pattern 2):', p2);
+          return `${p1}<img src="${p2}" alt="Generated image" class="h-[150px] w-[150px] max-w-full border border-newBgColorInner rounded-[8px] mb-[10px] object-cover" onerror="console.error('Image failed to load:', this.src)" />${p4}`;
+        }
+        return match;
       })
       .replace(/\[\-\-Media\-\-\](.*)\[\-\-Media\-\-\]/g, (match, p1) => {
         return `<div class="flex justify-center mt-[20px]">${p1}</div>`;
@@ -132,10 +196,18 @@ const Message: FC<UserMessageProps> = (props) => {
           return ``;
         }
       );
+    
+    console.log('[AgentChat] Processed content length:', processed.length);
+    console.log('[AgentChat] Processed content (first 500 chars):', processed.substring(0, 500));
+    console.log('[AgentChat] Content changed:', content !== processed);
+    console.log('[AgentChat] ===== END MESSAGE PROCESSING =====');
+    return processed;
   }, [props.message?.content]);
+  
+  const isAssistant = (props.message as any)?.role === 'assistant';
   return (
     <div
-      className="copilotKitMessage copilotKitUserMessage min-w-[300px]"
+      className={`copilotKitMessage ${isAssistant ? 'copilotKitAssistantMessage' : 'copilotKitUserMessage'} min-w-[300px]`}
       dangerouslySetInnerHTML={{ __html: convertContentToImagesAndVideo }}
     />
   );

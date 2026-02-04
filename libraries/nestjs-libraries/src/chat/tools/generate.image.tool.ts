@@ -41,7 +41,10 @@ export class GenerateImageTool implements AgentToolInterface {
           'data:image/png;base64,' + image
         );
 
-        return this._mediaService.saveFile(org.id, file.split('/').pop(), file);
+        console.log(`[GenerateImageTool] Image uploaded, URL: ${file}`);
+        const saved = await this._mediaService.saveFile(org.id, file.split('/').pop(), file);
+        console.log(`[GenerateImageTool] File saved to database:`, saved);
+        return saved;
       },
     });
   }

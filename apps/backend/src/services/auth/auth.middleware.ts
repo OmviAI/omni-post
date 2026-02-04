@@ -31,8 +31,17 @@ export class AuthMiddleware implements NestMiddleware {
     private _userService: UsersService
   ) {}
   async use(req: Request, res: Response, next: NextFunction) {
+    // Log for debugging copilot endpoints
+    if (req.path.includes('/copilot/')) {
+      console.log(`[AuthMiddleware] Copilot request - Path: ${req.path}, HasAuthHeader: ${!!req.headers.auth}, HasAuthCookie: ${!!req.cookies.auth}, AllHeaders: ${JSON.stringify(Object.keys(req.headers))}, AllCookies: ${JSON.stringify(Object.keys(req.cookies || {}))}`);
+    }
+    
     const auth = req.headers.auth || req.cookies.auth;
     if (!auth) {
+      // For copilot endpoints, provide more detailed error info
+      if (req.path.includes('/copilot/')) {
+        console.error(`[AuthMiddleware] No auth found for ${req.path} - This endpoint requires authentication`);
+      }
       throw new HttpForbiddenException();
     }
     try {

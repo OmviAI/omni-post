@@ -151,6 +151,33 @@ export class PublicController {
     return this._nowpayments.processPayment(path, body);
   }
 
+  @Get('/uploads/:path(*)')
+  async serveUpload(
+    @Param('path') filePath: string,
+    @Res() res: Response
+  ) {
+    try {
+      const uploadDir = process.env.UPLOAD_DIRECTORY || './uploads';
+      const fullPath = require('path').join(uploadDir, filePath);
+      const fs = require('fs');
+      
+      if (!fs.existsSync(fullPath) || !fs.statSync(fullPath).isFile()) {
+        return res.status(404).send('File not found');
+      }
+
+      const mime = require('mime');
+      const contentType = mime.getType(fullPath) || 'application/octet-stream';
+      
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      
+      return res.sendFile(require('path').resolve(fullPath));
+    } catch (error: any) {
+      console.error('[PublicController] Error serving upload:', error);
+      return res.status(500).send('Internal server error');
+    }
+  }
+
   @Get('/stream')
   async streamFile(
     @Query('url') url: string,
