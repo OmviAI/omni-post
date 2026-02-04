@@ -79,8 +79,8 @@ You can see your previous conversations from the right menu.
 You can also use me as an MCP Server, check Settings >> Public API
 `),
             }}
-            UserMessage={Message}
-            AssistantMessage={Message}
+            UserMessage={UserMessage}
+            AssistantMessage={AssistantMessage}
             Input={NewInput}
           />
         </div>
@@ -116,67 +116,81 @@ const LoadMessages: FC<{ id: string }> = ({ id }) => {
   return null;
 };
 
-const Message: FC<UserMessageProps | AssistantMessageProps> = (props) => {
-  const convertContentToImagesAndVideo = useMemo(() => {
-    const content = props.message?.content || '';
-    const role = (props.message as any)?.role;
-    console.log('[AgentChat] ===== MESSAGE PROCESSING =====');
-    console.log('[AgentChat] Message role:', role);
-    console.log('[AgentChat] Original content length:', content.length);
-    console.log('[AgentChat] Original content (first 500 chars):', content.substring(0, 500));
-    console.log('[AgentChat] Original content (full):', JSON.stringify(content));
-    
-    // First, try to find any image URLs in the content (for debugging)
-    const imageUrlMatches = content.match(/https?:\/\/[^\s\n]+\.(png|jpg|jpeg|gif|webp)/gi);
-    if (imageUrlMatches) {
-      console.log('[AgentChat] Found potential image URLs:', imageUrlMatches);
-    }
-    
-    let processed = content
-      // Match Video: http...mp4 followed by newline or end of string
-      .replace(/Video:\s*(https?:\/\/[^\s\n]+\.mp4)(\n|$| )/g, (match, p1, p2) => {
-        const url = p1.trim();
-        console.log('[AgentChat] ✓ Matched video URL:', url);
-        return `<video controls class="h-[150px] w-[150px] rounded-[8px] mb-[10px]"><source src="${url}" type="video/mp4">Your browser does not support the video tag.</video>${p2}`;
-      })
-      // Match Image: http... or https... (more flexible - handles various formats)
-      // Pattern 1: "Image: https://..." with optional whitespace
-      .replace(/Image:\s*(https?:\/\/[^\s\n<>"]+)(\n|$| |<|")/g, (match, p1, p2) => {
-        const url = p1.trim();
-        console.log('[AgentChat] ✓ Matched image URL (Pattern 1):', url);
-        return `<img src="${url}" alt="Generated image" class="h-[150px] w-[150px] max-w-full border border-newBgColorInner rounded-[8px] mb-[10px] object-cover" onerror="console.error('Image failed to load:', this.src)" />${p2}`;
-      })
-      // Pattern 2: Just a URL that looks like an image (fallback)
-      .replace(/(^|\n)(https?:\/\/[^\s\n<>"]+\.(png|jpg|jpeg|gif|webp))(\n|$| )/g, (match, p1, p2, p3, p4) => {
-        // Only match if it's not already inside an img tag
-        if (!match.includes('<img')) {
-          console.log('[AgentChat] ✓ Matched standalone image URL (Pattern 2):', p2);
-          return `${p1}<img src="${p2}" alt="Generated image" class="h-[150px] w-[150px] max-w-full border border-newBgColorInner rounded-[8px] mb-[10px] object-cover" onerror="console.error('Image failed to load:', this.src)" />${p4}`;
-        }
-        return match;
-      })
-      .replace(/\[\-\-Media\-\-\](.*)\[\-\-Media\-\-\]/g, (match, p1) => {
-        return `<div class="flex justify-center mt-[20px]">${p1}</div>`;
-      })
-      .replace(
-        /(\[--integrations--\][\s\S]*?\[--integrations--\])/g,
-        (match, p1) => {
-          return ``;
-        }
-      );
-    
-    console.log('[AgentChat] Processed content length:', processed.length);
-    console.log('[AgentChat] Processed content (first 500 chars):', processed.substring(0, 500));
-    console.log('[AgentChat] Content changed:', content !== processed);
-    console.log('[AgentChat] ===== END MESSAGE PROCESSING =====');
-    return processed;
+// Shared function to convert content with images/videos
+const convertContentToImagesAndVideo = (content: string) => {
+  console.log('[AgentChat] ===== MESSAGE PROCESSING =====');
+  console.log('[AgentChat] Original content length:', content.length);
+  console.log('[AgentChat] Original content (first 500 chars):', content.substring(0, 500));
+  console.log('[AgentChat] Original content (full):', JSON.stringify(content));
+  
+  // First, try to find any image URLs in the content (for debugging)
+  const imageUrlMatches = content.match(/https?:\/\/[^\s\n]+\.(png|jpg|jpeg|gif|webp)/gi);
+  if (imageUrlMatches) {
+    console.log('[AgentChat] Found potential image URLs:', imageUrlMatches);
+  }
+  
+  let processed = content
+    // Match Video: http...mp4 followed by newline or end of string
+    .replace(/Video:\s*(https?:\/\/[^\s\n]+\.mp4)(\n|$| )/g, (match, p1, p2) => {
+      const url = p1.trim();
+      console.log('[AgentChat] ✓ Matched video URL:', url);
+      return `<video controls class="h-[150px] w-[150px] rounded-[8px] mb-[10px]"><source src="${url}" type="video/mp4">Your browser does not support the video tag.</video>${p2}`;
+    })
+    // Match Image: http... or https... (more flexible - handles various formats)
+    // Pattern 1: "Image: https://..." with optional whitespace
+    .replace(/Image:\s*(https?:\/\/[^\s\n<>"]+)(\n|$| |<|")/g, (match, p1, p2) => {
+      const url = p1.trim();
+      console.log('[AgentChat] ✓ Matched image URL (Pattern 1):', url);
+      return `<img src="${url}" alt="Generated image" class="h-[150px] w-[150px] max-w-full border border-newBgColorInner rounded-[8px] mb-[10px] object-cover" onerror="console.error('Image failed to load:', this.src)" />${p2}`;
+    })
+    // Pattern 2: Just a URL that looks like an image (fallback)
+    .replace(/(^|\n)(https?:\/\/[^\s\n<>"]+\.(png|jpg|jpeg|gif|webp))(\n|$| )/g, (match, p1, p2, p3, p4) => {
+      // Only match if it's not already inside an img tag
+      if (!match.includes('<img')) {
+        console.log('[AgentChat] ✓ Matched standalone image URL (Pattern 2):', p2);
+        return `${p1}<img src="${p2}" alt="Generated image" class="h-[150px] w-[150px] max-w-full border border-newBgColorInner rounded-[8px] mb-[10px] object-cover" onerror="console.error('Image failed to load:', this.src)" />${p4}`;
+      }
+      return match;
+    })
+    .replace(/\[\-\-Media\-\-\](.*)\[\-\-Media\-\-\]/g, (match, p1) => {
+      return `<div class="flex justify-center mt-[20px]">${p1}</div>`;
+    })
+    .replace(
+      /(\[--integrations--\][\s\S]*?\[--integrations--\])/g,
+      (match, p1) => {
+        return ``;
+      }
+    );
+  
+  console.log('[AgentChat] Processed content length:', processed.length);
+  console.log('[AgentChat] Processed content (first 500 chars):', processed.substring(0, 500));
+  console.log('[AgentChat] Content changed:', content !== processed);
+  console.log('[AgentChat] ===== END MESSAGE PROCESSING =====');
+  return processed;
+};
+
+const UserMessage: FC<UserMessageProps> = (props) => {
+  const processedContent = useMemo(() => {
+    return convertContentToImagesAndVideo(props.message?.content || '');
   }, [props.message?.content]);
   
-  const isAssistant = (props.message as any)?.role === 'assistant';
   return (
     <div
-      className={`copilotKitMessage ${isAssistant ? 'copilotKitAssistantMessage' : 'copilotKitUserMessage'} min-w-[300px]`}
-      dangerouslySetInnerHTML={{ __html: convertContentToImagesAndVideo }}
+      className="copilotKitMessage copilotKitUserMessage min-w-[300px]"
+      dangerouslySetInnerHTML={{ __html: processedContent }}
+    />
+  );
+};
+
+const AssistantMessage: FC<AssistantMessageProps> = (props) => {
+  const processedContent = useMemo(() => {
+    return convertContentToImagesAndVideo(props.message?.content || '');
+  }, [props.message?.content]);
+  
+  return (
+    <div
+      className="copilotKitMessage copilotKitAssistantMessage min-w-[300px]"
+      dangerouslySetInnerHTML={{ __html: processedContent }}
     />
   );
 };
