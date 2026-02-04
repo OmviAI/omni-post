@@ -28,7 +28,37 @@ const R2 = new S3Client({
     accessKeyId: CLOUDFLARE_ACCESS_KEY!,
     secretAccessKey: CLOUDFLARE_SECRET_ACCESS_KEY!,
   },
+  requestChecksumCalculation: 'WHEN_REQUIRED',
 });
+
+// Add middleware to remove checksum headers for R2 compatibility
+R2.middlewareStack.add(
+  (next) =>
+    async (args): Promise<any> => {
+      const request = args.request as RequestInit;
+
+      // Remove checksum headers (R2 doesn't support them in the same way as S3)
+      const headers = request.headers as Record<string, string>;
+      delete headers['x-amz-checksum-crc32'];
+      delete headers['x-amz-checksum-crc32c'];
+      delete headers['x-amz-checksum-sha1'];
+      delete headers['x-amz-checksum-sha256'];
+      request.headers = headers;
+
+      Object.entries(request.headers).forEach(
+        // @ts-ignore
+        ([key, value]: [string, string]): void => {
+          if (!request.headers) {
+            request.headers = {};
+          }
+          (request.headers as Record<string, string>)[key] = value;
+        }
+      );
+
+      return next(args);
+    },
+  { step: 'build', name: 'customHeaders' }
+);
 
 // Function to generate a random string
 function generateRandomString() {
@@ -207,18 +237,29 @@ export async function signPart(req: Request, res: Response) {
   const { key, uploadId } = req.body;
   const partNumber = parseInt(req.body.partNumber);
 
-  const params = {
-    Bucket: CLOUDFLARE_BUCKETNAME,
-    Key: key,
-    PartNumber: partNumber,
-    UploadId: uploadId,
-    Expires: 3600,
-  };
+  try {
+    const params = {
+      Bucket: CLOUDFLARE_BUCKETNAME,
+      Key: key,
+      PartNumber: partNumber,
+      UploadId: uploadId,
+    };
 
-  const command = new UploadPartCommand({ ...params });
-  const url = await getSignedUrl(R2, command, { expiresIn: 3600 });
+    const command = new UploadPartCommand({ ...params });
+    // Generate presigned URL without checksum requirements
+    const url = await getSignedUrl(R2, command, { 
+      expiresIn: 3600,
+      // Don't include checksum in the presigned URL
+      signableHeaders: new Set(['host']),
+    });
 
-  return res.status(200).json({
-    url: url,
-  });
+    console.log(`[R2Uploader] Generated presigned URL for part ${partNumber} of ${key}`);
+    
+    return res.status(200).json({
+      url: url,
+    });
+  } catch (err) {
+    console.error('[R2Uploader] Error signing part:', err);
+    return res.status(500).json({ error: 'Failed to sign part', details: err });
+  }
 }

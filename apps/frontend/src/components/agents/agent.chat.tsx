@@ -35,37 +35,6 @@ import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { ExistingDataContextProvider } from '@gitroom/frontend/components/launches/helpers/use.existing.data';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 
-// Helper to get cookie value
-const getCookie = (name: string): string | null => {
-  if (typeof document === 'undefined') return null;
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
-  return null;
-};
-
-// Custom fetch that adds auth header
-const createAuthFetch = () => {
-  return (url: string, options: RequestInit = {}) => {
-    const authCookie = getCookie('auth');
-    const showorgCookie = getCookie('showorg');
-    
-    const headers = new Headers(options.headers);
-    if (authCookie && !headers.has('auth')) {
-      headers.set('auth', authCookie);
-    }
-    if (showorgCookie && !headers.has('showorg')) {
-      headers.set('showorg', showorgCookie);
-    }
-    
-    return fetch(url, {
-      ...options,
-      credentials: 'include',
-      headers,
-    });
-  };
-};
-
 export const AgentChat: FC = () => {
   const { backendUrl } = useVariables();
   const params = useParams<{ id: string }>();
@@ -79,7 +48,6 @@ export const AgentChat: FC = () => {
       runtimeUrl={backendUrl + '/copilot/agent'}
       showDevConsole={false}
       agent="postiz"
-      fetch={createAuthFetch()}
       properties={{
         integrations: properties,
       }}
