@@ -7,7 +7,7 @@ import { useEffect } from 'react';
  * This is necessary because CopilotKit doesn't support custom fetch prop
  * and cookies may not be sent in production due to CORS/cookie settings
  */
-export function FetchInterceptor() {
+export function FetchInterceptor(): null {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
