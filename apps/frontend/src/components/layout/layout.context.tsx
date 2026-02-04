@@ -6,7 +6,6 @@ import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useReturnUrl } from '@gitroom/frontend/app/(app)/auth/return.url.component';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { FetchInterceptor } from '@gitroom/frontend/components/layout/fetch.interceptor';
-import { FetchInterceptor } from '@gitroom/frontend/components/layout/fetch.interceptor';
 export default function LayoutContext(params: { children: ReactNode }) {
   if (params?.children) {
     // eslint-disable-next-line react/no-children-prop
