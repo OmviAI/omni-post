@@ -20,6 +20,7 @@ import {
   CopilotKit,
   useCopilotAction,
   useCopilotMessagesContext,
+  useCopilotContext,
 } from '@copilotkit/react-core';
 import {
   MediaPortal,
@@ -54,6 +55,7 @@ export const AgentChat: FC = () => {
     >
       <Hooks />
       <LoadMessages id={params.id} />
+      <TypingIndicatorHook />
       <div
         style={
           {
@@ -183,6 +185,36 @@ const UserMessage: FC<UserMessageProps> = (props) => {
 };
 
 const AssistantMessage: FC<AssistantMessageProps> = (props) => {
+  const copilotContext = useCopilotContext();
+  const { messages } = useCopilotMessagesContext();
+  const [showTyping, setShowTyping] = useState(false);
+  
+  // Check if we should show typing indicator
+  useEffect(() => {
+    if (!messages || messages.length === 0) {
+      setShowTyping(false);
+      return;
+    }
+    
+    const lastMessage = messages[messages.length - 1];
+    const isWaitingForResponse = (lastMessage as any)?.role === 'user';
+    const hasActiveRequest = copilotContext?.langGraphInterruptAction?.event?.name === 'LangGraphInterruptEvent' && 
+                            !copilotContext?.langGraphInterruptAction?.event?.response;
+    
+    // Show typing if waiting for response, has active request, and current message is empty
+    setShowTyping(isWaitingForResponse && hasActiveRequest && !props.message?.content);
+  }, [messages, copilotContext?.langGraphInterruptAction, props.message?.content]);
+  
+  // If typing indicator should be shown, show typing animation
+  if (showTyping) {
+    return <TypingIndicator />;
+  }
+  
+  // Don't render empty messages
+  if (!props.message?.content) {
+    return null;
+  }
+  
   const processedContent = useMemo(() => {
     return convertContentToImagesAndVideo(props.message?.content || '');
   }, [props.message?.content]);
@@ -193,6 +225,56 @@ const AssistantMessage: FC<AssistantMessageProps> = (props) => {
       dangerouslySetInnerHTML={{ __html: processedContent }}
     />
   );
+};
+
+// Typing indicator component (ChatGPT-style)
+const TypingIndicator: FC = () => {
+  return (
+    <div className="copilotKitMessage copilotKitAssistantMessage min-w-[300px] flex items-center gap-1 py-3 px-4">
+      <div className="flex gap-1.5 items-center">
+        <div 
+          className="w-2 h-2 bg-current rounded-full opacity-60" 
+          style={{ 
+            animation: 'typing-bounce 1.4s infinite',
+            animationDelay: '0ms'
+          }}
+        ></div>
+        <div 
+          className="w-2 h-2 bg-current rounded-full opacity-60" 
+          style={{ 
+            animation: 'typing-bounce 1.4s infinite',
+            animationDelay: '200ms'
+          }}
+        ></div>
+        <div 
+          className="w-2 h-2 bg-current rounded-full opacity-60" 
+          style={{ 
+            animation: 'typing-bounce 1.4s infinite',
+            animationDelay: '400ms'
+          }}
+        ></div>
+      </div>
+      <style jsx>{`
+        @keyframes typing-bounce {
+          0%, 60%, 100% {
+            transform: translateY(0);
+            opacity: 0.6;
+          }
+          30% {
+            transform: translateY(-10px);
+            opacity: 1;
+          }
+        }
+      `}</style>
+    </div>
+  );
+};
+
+// Hook to show typing indicator when agent is processing
+// This component is kept for potential future use but the typing indicator
+// is now handled directly in AssistantMessage component
+const TypingIndicatorHook: FC = () => {
+  return null;
 };
 const NewInput: FC<InputProps> = (props) => {
   const [media, setMedia] = useState([] as { path: string; id: string }[]);

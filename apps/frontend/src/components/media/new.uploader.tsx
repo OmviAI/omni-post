@@ -235,6 +235,7 @@ export function useUppyUploader(props: {
         return;
       }
 
+      // Cloudflare multipart upload response format
       setLocked(false);
       onUploadSuccess(result.successful.map((p) => p.response.body.saved));
     });
