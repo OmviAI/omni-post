@@ -48,6 +48,33 @@ const poke = defineSignal('poke');
 
 const iterate = ['post', 'afterRefresh', 'retry1', 'retry2', 'retry3'];
 
+const formatTemporalErr = (err: unknown) => {
+  if (err instanceof ActivityFailure) {
+    const causeAny: any = err.cause as any;
+    return {
+      kind: 'ActivityFailure',
+      message: err.message,
+      activityType: err.activityType,
+      retryState: err.retryState,
+      cause: causeAny
+        ? {
+            type: causeAny.type,
+            message: causeAny.message,
+            name: causeAny.name,
+            details: causeAny.details,
+            stack: causeAny.stack,
+          }
+        : undefined,
+    };
+  }
+
+  if (err instanceof Error) {
+    return { kind: err.name, message: err.message, stack: err.stack };
+  }
+
+  return { kind: typeof err, value: err };
+};
+
 export async function postWorkflowV101({
   taskQueue,
   postId,
@@ -202,7 +229,11 @@ export async function postWorkflowV101({
         // break the current while to move to the next post
         break;
       } catch (err) {
-        console.error(`[Workflow] ERROR in post loop - PostId: ${postId}, PostIndex: ${i}, Error: ${err instanceof Error ? err.message : err}, ErrorType: ${err instanceof ActivityFailure ? 'ActivityFailure' : typeof err}, Stack: ${err instanceof Error ? err.stack : 'N/A'}`);
+        console.error(
+          `[Workflow] ERROR in post loop - PostId: ${postId}, PostIndex: ${i}, Details: ${JSON.stringify(
+            formatTemporalErr(err)
+          )}`
+        );
         
         // if token refresh is needed, do it and repeat
         if (
@@ -247,8 +278,19 @@ export async function postWorkflowV101({
           );
           return false;
         }
+
+        // Stop the workflow on non-refresh errors.
+        // Otherwise, we'll keep looping retries and eventually crash on postsResults[0] being undefined.
+        return false;
       }
     }
+  }
+
+  if (!postsResults[0]?.postId) {
+    console.error(
+      `[Workflow] No successful post result - PostId: ${postId}, Provider: ${post.integration?.providerIdentifier}. Skipping webhooks/plugs.`
+    );
+    return false;
   }
 
   // send webhooks for the post

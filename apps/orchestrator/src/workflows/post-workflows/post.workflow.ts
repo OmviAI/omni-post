@@ -46,6 +46,33 @@ const {
 
 const poke = defineSignal('poke');
 
+const formatTemporalErr = (err: unknown) => {
+  if (err instanceof ActivityFailure) {
+    const causeAny: any = err.cause as any;
+    return {
+      kind: 'ActivityFailure',
+      message: err.message,
+      activityType: err.activityType,
+      retryState: err.retryState,
+      cause: causeAny
+        ? {
+            type: causeAny.type,
+            message: causeAny.message,
+            name: causeAny.name,
+            details: causeAny.details,
+            stack: causeAny.stack,
+          }
+        : undefined,
+    };
+  }
+
+  if (err instanceof Error) {
+    return { kind: err.name, message: err.message, stack: err.stack };
+  }
+
+  return { kind: typeof err, value: err };
+};
+
 export async function postWorkflow({
   taskQueue,
   postId,
@@ -175,6 +202,11 @@ export async function postWorkflow({
         // break the current while to move to the next post
         break;
       } catch (err) {
+        console.error(
+          `[Workflow] ERROR in post loop - PostId: ${postId}, PostIndex: ${i}, Details: ${JSON.stringify(
+            formatTemporalErr(err)
+          )}`
+        );
         // if token refresh is needed, do it and repeat
         if (
           err instanceof ActivityFailure &&
@@ -216,6 +248,13 @@ export async function postWorkflow({
         return false;
       }
     }
+  }
+
+  if (!postsResults[0]?.postId) {
+    console.error(
+      `[Workflow] No successful post result - PostId: ${postId}, Provider: ${post.integration?.providerIdentifier}. Skipping webhooks/plugs.`
+    );
+    return false;
   }
 
   // send notification on a sucessful post
