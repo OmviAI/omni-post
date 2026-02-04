@@ -44,25 +44,29 @@ const nextConfig = {
     ],
   },
   async redirects() {
-    return [
-      {
-        source: '/api/uploads/:path*',
-        destination:
-          process.env.STORAGE_PROVIDER === 'local' ? '/uploads/:path*' : '/404',
-        permanent: true,
-      },
-    ];
+    // Only redirect for local storage
+    if (process.env.STORAGE_PROVIDER === 'local') {
+      return [
+        {
+          source: '/api/uploads/:path*',
+          destination: '/uploads/:path*',
+          permanent: true,
+        },
+      ];
+    }
+    return [];
   },
   async rewrites() {
-    return [
-      {
-        source: '/uploads/:path*',
-        destination:
-          process.env.STORAGE_PROVIDER === 'local'
-            ? '/api/uploads/:path*'
-            : '/404',
-      },
-    ];
+    // Only rewrite for local storage (Cloudflare R2 serves files directly via CDN)
+    if (process.env.STORAGE_PROVIDER === 'local') {
+      return [
+        {
+          source: '/uploads/:path*',
+          destination: '/api/uploads/:path*',
+        },
+      ];
+    }
+    return [];
   },
 };
 

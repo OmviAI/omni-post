@@ -66,6 +66,20 @@ async function start() {
   });
 
   app.use(cookieParser());
+  
+  // Middleware to ensure auth cookie is available as header for CopilotKit requests
+  // CopilotKit might not send cookies properly, so we extract from cookie and set as header
+  app.use('/copilot/*', (req: any, res: any, next: any) => {
+    // If no auth header but auth cookie exists, copy it to header
+    if (!req.headers.auth && req.cookies?.auth) {
+      req.headers.auth = req.cookies.auth;
+    }
+    // Same for showorg
+    if (!req.headers.showorg && req.cookies?.showorg) {
+      req.headers.showorg = req.cookies.showorg;
+    }
+    next();
+  });
   app.useGlobalFilters(new SubscriptionExceptionFilter());
   app.useGlobalFilters(new HttpExceptionFilter());
 
