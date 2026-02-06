@@ -204,21 +204,21 @@ const AssistantMessage: FC<AssistantMessageProps> = (props) => {
     // Show typing if waiting for response, has active request, and current message is empty
     setShowTyping(isWaitingForResponse && hasActiveRequest && !props.message?.content);
   }, [messages, copilotContext?.langGraphInterruptAction, props.message?.content]);
-  
+
+  const processedContent = useMemo(() => {
+    return convertContentToImagesAndVideo(props.message?.content || '');
+  }, [props.message?.content]);
+
   // If typing indicator should be shown, show typing animation
   if (showTyping) {
     return <TypingIndicator />;
   }
-  
+
   // Don't render empty messages
   if (!props.message?.content) {
     return null;
   }
-  
-  const processedContent = useMemo(() => {
-    return convertContentToImagesAndVideo(props.message?.content || '');
-  }, [props.message?.content]);
-  
+
   return (
     <div
       className="copilotKitMessage copilotKitAssistantMessage min-w-[300px]"
