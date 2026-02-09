@@ -20,7 +20,6 @@ import {
   CopilotKit,
   useCopilotAction,
   useCopilotMessagesContext,
-  useCopilotContext,
 } from '@copilotkit/react-core';
 import {
   MediaPortal,
@@ -185,32 +184,22 @@ const UserMessage: FC<UserMessageProps> = (props) => {
 };
 
 const AssistantMessage: FC<AssistantMessageProps> = (props) => {
-  const copilotContext = useCopilotContext();
-  const { messages } = useCopilotMessagesContext();
-  const [showTyping, setShowTyping] = useState(false);
-  
-  // Check if we should show typing indicator
-  useEffect(() => {
-    if (!messages || messages.length === 0) {
-      setShowTyping(false);
-      return;
-    }
-    
-    const lastMessage = messages[messages.length - 1];
-    const isWaitingForResponse = (lastMessage as any)?.role === 'user';
-    const hasActiveRequest = copilotContext?.langGraphInterruptAction?.event?.name === 'LangGraphInterruptEvent' && 
-                            !copilotContext?.langGraphInterruptAction?.event?.response;
-    
-    // Show typing if waiting for response, has active request, and current message is empty
-    setShowTyping(isWaitingForResponse && hasActiveRequest && !props.message?.content);
-  }, [messages, copilotContext?.langGraphInterruptAction, props.message?.content]);
-
   const processedContent = useMemo(() => {
     return convertContentToImagesAndVideo(props.message?.content || '');
   }, [props.message?.content]);
 
-  // If typing indicator should be shown, show typing animation
-  if (showTyping) {
+  // Detect if image generation is in progress
+  const isImageGenerating = useMemo(() => {
+    const content = (props.message?.content || '').toLowerCase();
+    const hasImageKeyword =
+      (content.includes('generat') && (content.includes('image') || content.includes('picture'))) ||
+      (content.includes('creating') && content.includes('image'));
+    const hasImageUrl = /Image:\s*https?:\/\//i.test(props.message?.content || '');
+    return (props.isLoading || props.isGenerating) && hasImageKeyword && !hasImageUrl;
+  }, [props.message?.content, props.isLoading, props.isGenerating]);
+
+  // Show typing indicator when loading with no content yet
+  if (props.isLoading && !props.message?.content) {
     return <TypingIndicator />;
   }
 
@@ -220,10 +209,10 @@ const AssistantMessage: FC<AssistantMessageProps> = (props) => {
   }
 
   return (
-    <div
-      className="copilotKitMessage copilotKitAssistantMessage min-w-[300px]"
-      dangerouslySetInnerHTML={{ __html: processedContent }}
-    />
+    <div className="copilotKitMessage copilotKitAssistantMessage min-w-[300px]">
+      <div dangerouslySetInnerHTML={{ __html: processedContent }} />
+      {isImageGenerating && <ImageGeneratingLoader />}
+    </div>
   );
 };
 
@@ -263,6 +252,66 @@ const TypingIndicator: FC = () => {
           30% {
             transform: translateY(-10px);
             opacity: 1;
+          }
+        }
+      `}</style>
+    </div>
+  );
+};
+
+// Image generation loading component (ChatGPT-style shimmer)
+const ImageGeneratingLoader: FC = () => {
+  return (
+    <div className="mt-3 flex items-start gap-3">
+      <div className="relative w-[200px] h-[200px] rounded-xl overflow-hidden bg-newBgColorInner border border-newBgColorInner">
+        {/* Shimmer overlay */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%)',
+            backgroundSize: '200% 100%',
+            animation: 'image-shimmer 1.8s ease-in-out infinite',
+          }}
+        />
+        {/* Center icon + text */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+          <svg
+            className="w-8 h-8 opacity-40"
+            style={{ animation: 'image-pulse 2s ease-in-out infinite' }}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z"
+            />
+          </svg>
+          <span className="text-xs opacity-50 font-medium">
+            Generating image...
+          </span>
+        </div>
+      </div>
+      <style jsx>{`
+        @keyframes image-shimmer {
+          0% {
+            background-position: 200% 0;
+          }
+          100% {
+            background-position: -200% 0;
+          }
+        }
+        @keyframes image-pulse {
+          0%, 100% {
+            opacity: 0.4;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 0.7;
+            transform: scale(1.05);
           }
         }
       `}</style>
