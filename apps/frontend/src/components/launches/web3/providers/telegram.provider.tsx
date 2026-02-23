@@ -23,6 +23,13 @@ export const TelegramProvider: FC<Web3ProviderInterface> = (props) => {
   const stop = useRef(false);
   const [step, setStep] = useState(false);
   const toaster = useToaster();
+  
+  // Debug: Log the bot name to help troubleshoot
+  useEffect(() => {
+    if (!telegramBotName) {
+      console.warn('TELEGRAM_BOT_NAME is not set. Please add TELEGRAM_BOT_NAME to your frontend service environment variables.');
+    }
+  }, [telegramBotName]);
   async function* load() {
     let id = '';
     while (true) {
@@ -89,12 +96,16 @@ export const TelegramProvider: FC<Web3ProviderInterface> = (props) => {
         </svg>
       </button>
       <div className="justify-center items-center flex flex-col pt-[16px]">
-        <div>
+        <div className="text-center">
           {t('please_add', 'Please add')}{' '}
-          <strong>@{telegramBotName}</strong>{' '}
+          {telegramBotName && telegramBotName.trim() ? (
+            <strong className="text-blue-400">@{telegramBotName}</strong>
+          ) : (
+            <strong className="text-red-400">[Bot name not configured - Set TELEGRAM_BOT_NAME in frontend service]</strong>
+          )}{' '}
           {t(
             'to_your_telegram_group_channel_and_click_here',
-            'to your\n          telegram group / channel and click here:'
+            'to your telegram group / channel and click here:'
           )}
         </div>
         {!step ? (
