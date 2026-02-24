@@ -49,13 +49,21 @@ export class DiscordProvider extends SocialAbstract implements SocialProvider {
       })
     ).json();
 
+    // Discord avatar URL - use default avatar if bot doesn't have a custom one
+    // Discord default avatars are numbered 0-4 based on user ID modulo 5
+    const avatarUrl = application.bot?.avatar
+      ? `https://cdn.discordapp.com/avatars/${application.bot.id}/${application.bot.avatar}.png`
+      : application.bot?.id
+      ? `https://cdn.discordapp.com/embed/avatars/${(parseInt(application.bot.id) % 5)}.png`
+      : '';
+
     return {
       refreshToken: refresh_token,
       expiresIn: expires_in,
       accessToken: access_token,
       id: '',
       name: application.name,
-      picture: '',
+      picture: avatarUrl,
       username: '',
     };
   }
@@ -106,13 +114,19 @@ export class DiscordProvider extends SocialAbstract implements SocialProvider {
       })
     ).json();
 
+    // Discord avatar URL - use default avatar if bot doesn't have a custom one
+    // Discord default avatars are numbered 0-4 based on user ID modulo 5
+    const avatarUrl = application.bot.avatar
+      ? `https://cdn.discordapp.com/avatars/${application.bot.id}/${application.bot.avatar}.png`
+      : `https://cdn.discordapp.com/embed/avatars/${(parseInt(application.bot.id) % 5)}.png`;
+
     return {
       id: guild.id,
       name: application.name,
       accessToken: access_token,
       refreshToken: refresh_token,
       expiresIn: expires_in,
-      picture: `https://cdn.discordapp.com/avatars/${application.bot.id}/${application.bot.avatar}.png`,
+      picture: avatarUrl,
       username: application.bot.username,
     };
   }
