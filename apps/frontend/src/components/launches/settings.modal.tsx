@@ -29,7 +29,7 @@ export const Element: FC<{
   );
 };
 export const SettingsModal: FC<{
-  integration: Integration & {
+  integration: PostIntegration & {
     customer?: {
       id: string;
       name: string;

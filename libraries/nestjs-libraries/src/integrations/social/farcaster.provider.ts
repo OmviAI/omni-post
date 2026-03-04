@@ -8,7 +8,7 @@ import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import dayjs from 'dayjs';
 import { SocialAbstract } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { NeynarAPIClient } from '@neynar/nodejs-sdk';
-import { Integration } from '@prisma/client';
+import { PostIntegration } from '@prisma/client';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { groupBy } from 'lodash';
 import { FarcasterDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/farcaster.dto';
@@ -133,7 +133,7 @@ export class FarcasterProvider
     accessToken: string,
     data: any,
     id: string,
-    integration: Integration
+    integration: PostIntegration
   ) {
     const search = await client.searchChannels({
       q: data.word,

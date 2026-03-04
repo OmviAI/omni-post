@@ -13,7 +13,7 @@ import { lookup } from 'mime-types';
 import axios from 'axios';
 import WebSocket from 'ws';
 import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
-import { Integration } from '@prisma/client';
+import { PostIntegration } from '@prisma/client';
 
 // @ts-ignore
 global.WebSocket = WebSocket;
@@ -294,7 +294,7 @@ export class RedditProvider extends SocialAbstract implements SocialProvider {
     lastCommentId: string | undefined,
     accessToken: string,
     postDetails: PostDetails<RedditSettingsDto>[],
-    integration: Integration
+    integration: PostIntegration
   ): Promise<PostResponse[]> {
     const [commentPost] = postDetails;
 

@@ -7,7 +7,7 @@ import {
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { SocialAbstract } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import dayjs from 'dayjs';
-import { Integration } from '@prisma/client';
+import { PostIntegration } from '@prisma/client';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { LemmySettingsDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/lemmy.dto';
 import { groupBy } from 'lodash';
@@ -125,7 +125,7 @@ export class LemmyProvider extends SocialAbstract implements SocialProvider {
     id: string,
     accessToken: string,
     postDetails: PostDetails<LemmySettingsDto>[],
-    integration: Integration
+    integration: PostIntegration
   ): Promise<PostResponse[]> {
     const [firstPost, ...restPosts] = postDetails;
 
@@ -239,7 +239,7 @@ export class LemmyProvider extends SocialAbstract implements SocialProvider {
     accessToken: string,
     data: any,
     id: string,
-    integration: Integration
+    integration: PostIntegration
   ) {
     const body = JSON.parse(
       AuthService.fixedDecryption(integration.customInstanceDetails!)

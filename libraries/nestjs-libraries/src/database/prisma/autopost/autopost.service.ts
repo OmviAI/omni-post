@@ -3,7 +3,7 @@ import { AutopostRepository } from '@gitroom/nestjs-libraries/database/prisma/au
 import { AutopostDto } from '@gitroom/nestjs-libraries/dtos/autopost/autopost.dto';
 import dayjs from 'dayjs';
 import { END, START, StateGraph } from '@langchain/langgraph';
-import { AutoPost, Integration } from '@prisma/client';
+import { AutoPost, PostIntegration } from '@prisma/client';
 import { BaseMessage } from '@langchain/core/messages';
 import striptags from 'striptags';
 import { ChatOpenAI, DallEAPIWrapper } from '@langchain/openai';
@@ -23,7 +23,7 @@ const parser = new Parser();
 
 interface WorkflowChannelsState {
   messages: BaseMessage[];
-  integrations: Integration[];
+  integrations: PostIntegration[];
   body: AutoPost;
   description: string;
   image: string;

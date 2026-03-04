@@ -6,7 +6,7 @@ import { ChartSocial } from '@gitroom/frontend/components/analytics/chart-social
 import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 export const RenderAnalytics: FC<{
-  integration: Integration;
+  integration: PostIntegration;
   date: number;
 }> = (props) => {
   const { integration, date } = props;
@@ -31,7 +31,7 @@ export const RenderAnalytics: FC<{
   });
   const refreshChannel = useCallback(
     (
-        integration: Integration & {
+        integration: PostIntegration & {
           identifier: string;
         }
       ) =>

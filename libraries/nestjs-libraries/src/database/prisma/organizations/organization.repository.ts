@@ -1,5 +1,5 @@
 import { PrismaRepository } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
-import { Role, SubscriptionTier } from '@prisma/client';
+import { SubscriptionTier, UserRole } from '@prisma/client';
 import { Injectable } from '@nestjs/common';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { CreateOrgUserDto } from '@gitroom/nestjs-libraries/dtos/auth/create.org.user.dto';
@@ -223,7 +223,7 @@ export class OrganizationRepository {
         isTrailing: true,
         users: {
           create: {
-            role: Role.SUPERADMIN,
+            role: UserRole.SUPERADMIN,
             user: {
               create: {
                 activated: body.provider !== 'LOCAL' || !hasEmail,
@@ -321,7 +321,7 @@ export class OrganizationRepository {
       where: {
         organizationId: orgId,
         role: {
-          not: Role.SUPERADMIN,
+          not: UserRole.SUPERADMIN,
         },
       },
       data: {

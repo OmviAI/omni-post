@@ -9,7 +9,7 @@ import sharp from 'sharp';
 import { lookup } from 'mime-types';
 import { readOrFetch } from '@gitroom/helpers/utils/read.or.fetch';
 import { SocialAbstract } from '@gitroom/nestjs-libraries/integrations/social.abstract';
-import { Integration } from '@prisma/client';
+import { PostIntegration } from '@prisma/client';
 import { PostPlug } from '@gitroom/helpers/decorators/post.plug';
 import { LinkedinDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/linkedin.dto';
 import imageToPDF from 'image-to-pdf';
@@ -638,7 +638,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
     id: string,
     accessToken: string,
     postDetails: PostDetails<LinkedinDto>[],
-    integration: Integration,
+    integration: PostIntegration,
     type = 'personal' as 'company' | 'personal'
   ): Promise<PostResponse[]> {
     let processedPostDetails = postDetails;
@@ -687,7 +687,7 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
     lastCommentId: string | undefined,
     accessToken: string,
     postDetails: PostDetails<LinkedinDto>[],
-    integration: Integration,
+    integration: PostIntegration,
     type = 'personal' as 'company' | 'personal'
   ): Promise<PostResponse[]> {
     const [commentPost] = postDetails;
@@ -711,8 +711,8 @@ export class LinkedinProvider extends SocialAbstract implements SocialProvider {
     fields: [],
   })
   async repostPostUsers(
-    integration: Integration,
-    originalIntegration: Integration,
+    integration: PostIntegration,
+    originalintegration: PostIntegration,
     postId: string,
     information: any,
     isPersonal = true

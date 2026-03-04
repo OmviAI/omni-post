@@ -6,7 +6,7 @@ import dayjs from 'dayjs';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
 export const IntegrationContext = createContext<{
   date: dayjs.Dayjs;
-  integration: Integrations | undefined;
+  integration: PostIntegrations | undefined;
   allIntegrations: Integrations[];
   value: Array<{
     content: string;

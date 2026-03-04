@@ -73,12 +73,12 @@ export const SVGLine = () => {
 };
 interface MenuComponentInterface {
   refreshChannel: (
-    integration: Integration & {
+    integration: PostIntegration & {
       identifier: string;
     }
   ) => () => void;
   collapsed: boolean;
-  continueIntegration: (integration: Integration) => () => void;
+  continueIntegration: (integration: PostIntegration) => () => void;
   totalNonDisabledChannels: number;
   mutate: (shouldReload?: boolean) => void;
   update: (shouldReload: boolean) => void;
@@ -215,7 +215,7 @@ export const MenuGroupComponent: FC<
 };
 export const MenuComponent: FC<
   MenuComponentInterface & {
-    integration: Integration & {
+    integration: PostIntegration & {
       identifier: string;
       changeProfilePicture: boolean;
       changeNickName: boolean;
@@ -434,7 +434,7 @@ export const LaunchesComponent = () => {
   );
   const refreshChannel = useCallback(
     (
-        integration: Integration & {
+        integration: PostIntegration & {
           identifier: string;
         }
       ) =>

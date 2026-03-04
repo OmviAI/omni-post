@@ -11,7 +11,7 @@ import { useToaster } from '@gitroom/react/toaster/toaster';
 import { showMediaBox } from '@gitroom/frontend/components/media/media.component';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 export const BotPicture: FC<{
-  integration: Integrations;
+  integration: PostIntegrations;
   canChangeProfilePicture: boolean;
   canChangeNickName: boolean;
   mutate: () => void;

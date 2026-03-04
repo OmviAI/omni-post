@@ -443,7 +443,7 @@ export const CalendarColumn: FC<{
   const editPost = useCallback(
     (
         loadPost: Post & {
-          integration: Integration;
+          integration: PostIntegration;
         },
         isDuplicate?: boolean
       ) =>
@@ -797,7 +797,7 @@ const CalendarItem: FC<{
   state: State;
   display: 'day' | 'week' | 'month';
   post: Post & {
-    integration: Integration;
+    integration: PostIntegration;
     tags: {
       tag: Tags;
     }[];

@@ -84,7 +84,7 @@ export const AgentList: FC<{ onChange: (arr: any[]) => void }> = ({
   });
 
   const setIntegration = useCallback(
-    (integration: Integration) => () => {
+    (integration: PostIntegration) => () => {
       if (selected.some((p) => p.id === integration.id)) {
         onChange(selected.filter((p) => p.id !== integration.id));
         setSelected(selected.filter((p) => p.id !== integration.id));

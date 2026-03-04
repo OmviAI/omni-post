@@ -42,7 +42,7 @@ export const CalendarContext = createContext({
   trendings: [] as string[],
   posts: [] as Array<
     Post & {
-      integration: Integration;
+      integration: PostIntegration;
       tags: {
         tag: Tags;
       }[];

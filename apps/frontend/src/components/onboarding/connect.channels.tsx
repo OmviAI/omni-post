@@ -64,7 +64,7 @@ export const ConnectChannels: FC = () => {
   };
   const refreshChannel = useCallback(
     (
-        integration: Integration & {
+        integration: PostIntegration & {
           identifier: string;
         }
       ) =>

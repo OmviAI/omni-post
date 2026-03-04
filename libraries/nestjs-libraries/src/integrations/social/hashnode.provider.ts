@@ -9,7 +9,7 @@ import { tags } from '@gitroom/nestjs-libraries/integrations/social/hashnode.tag
 import { jsonToGraphQLQuery } from 'json-to-graphql-query';
 import { HashnodeSettingsDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/hashnode.settings.dto';
 import dayjs from 'dayjs';
-import { Integration } from '@prisma/client';
+import { PostIntegration } from '@prisma/client';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
 
@@ -159,7 +159,7 @@ export class HashnodeProvider extends SocialAbstract implements SocialProvider {
     id: string,
     accessToken: string,
     postDetails: PostDetails[],
-    integration: Integration
+    integration: PostIntegration
   ): Promise<PostResponse[]> {
     const { settings } = postDetails?.[0] || { settings: {} };
     const query = jsonToGraphQLQuery(

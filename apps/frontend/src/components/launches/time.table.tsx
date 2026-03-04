@@ -25,7 +25,7 @@ const minutes = [...Array(60).keys()].map((i, index) => ({
   value: index,
 }));
 export const TimeTable: FC<{
-  integration: Integrations;
+  integration: PostIntegrations;
   mutate: () => void;
 }> = (props) => {
   const t = useT();
