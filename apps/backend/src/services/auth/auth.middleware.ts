@@ -7,6 +7,7 @@ import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/us
 import { getCookieUrlFromDomain } from '@gitroom/helpers/subdomain/subdomain.management';
 import { HttpForbiddenException } from '@gitroom/nestjs-libraries/services/exception.filter';
 import { MastraService } from '@gitroom/nestjs-libraries/chat/mastra.service';
+import { verifyToken } from '@clerk/backend';
 
 export const removeAuth = (res: Response) => {
   res.cookie('auth', '', {
@@ -36,16 +37,54 @@ export class AuthMiddleware implements NestMiddleware {
       console.log(`[AuthMiddleware] Copilot request - Path: ${req.path}, HasAuthHeader: ${!!req.headers.auth}, HasAuthCookie: ${!!req.cookies.auth}, AllHeaders: ${JSON.stringify(Object.keys(req.headers))}, AllCookies: ${JSON.stringify(Object.keys(req.cookies || {}))}`);
     }
     
-    const auth = req.headers.auth || req.cookies.auth;
-    if (!auth) {
-      // For copilot endpoints, provide more detailed error info
-      if (req.path.includes('/copilot/')) {
-        console.error(`[AuthMiddleware] No auth found for ${req.path} - This endpoint requires authentication`);
-      }
-      throw new HttpForbiddenException();
-    }
+    // 1) Prefer Authorization: Bearer <clerk-jwt> when present
+    const authHeader =
+      (req.headers.authorization || req.headers.Authorization) as
+        | string
+        | undefined;
+
     try {
-      let user = AuthService.verifyJWT(auth) as User | null;
+      let user: User | null = null;
+
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.slice('Bearer '.length);
+        const secretKey = process.env.CLERK_SECRET_KEY;
+        if (!secretKey) {
+          throw new HttpForbiddenException();
+        }
+
+        const audience = process.env.CLERK_JWT_AUDIENCE;
+        const claims = await verifyToken(
+          token,
+          audience ? { secretKey, audience } : { secretKey },
+        );
+
+        const email =
+          // @ts-ignore
+          claims.email || claims.email_address || claims.primary_email;
+
+        if (!email) {
+          throw new HttpForbiddenException();
+        }
+
+        user = await this._userService.getUserByEmail(email);
+      } else {
+        // 2) Fallback to legacy JWT stored in header/cookie "auth"
+        const auth = (req.headers.auth || req.cookies.auth) as string | undefined;
+
+        if (!auth) {
+          // For copilot endpoints, provide more detailed error info
+          if (req.path.includes('/copilot/')) {
+            console.error(
+              `[AuthMiddleware] No auth found for ${req.path} - This endpoint requires authentication`,
+            );
+          }
+          throw new HttpForbiddenException();
+        }
+
+        user = AuthService.verifyJWT(auth) as User | null;
+      }
+
       const orgHeader = req.cookies.showorg || req.headers.showorg;
 
       if (!user) {

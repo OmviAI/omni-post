@@ -45,6 +45,8 @@
     "@aws-sdk/client-s3": "^3.787.0",
     "@aws-sdk/s3-request-presigner": "^3.787.0",
     "@casl/ability": "^6.5.0",
+    "@clerk/backend": "^3.0.1",
+    "@clerk/nextjs": "^7.0.1",
     "@copilotkit/react-core": "1.10.6",
     "@copilotkit/react-textarea": "1.10.6",
     "@copilotkit/react-ui": "1.10.6",

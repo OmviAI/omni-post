@@ -9,7 +9,7 @@ import {
   NotificationService,
   NotificationType,
 } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
-import { Integration, Post, State } from '@prisma/client';
+import { Post, PostState, PostIntegration } from '@prisma/client';
 import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
 import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
 import { AuthTokenDetails } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
@@ -238,7 +238,7 @@ export class PostActivity {
   }
 
   @ActivityMethod()
-  async changeState(id: string, state: State, err?: any, body?: any) {
+  async changeState(id: string, state: PostState, err?: any, body?: any) {
     return this._postService.changeState(id, state, err, body);
   }
 

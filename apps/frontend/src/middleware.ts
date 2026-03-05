@@ -80,22 +80,45 @@ export async function middleware(request: NextRequest) {
   }
   const org = nextUrl.searchParams.get('org');
   const url = new URL(nextUrl).search;
-  if (nextUrl.href.indexOf('/auth') === -1 && !authCookie) {
-    const providers = ['google', 'settings'];
-    const findIndex = providers.find((p) => nextUrl.href.indexOf(p) > -1);
-    const additional = !findIndex
-      ? ''
-      : (url.indexOf('?') > -1 ? '&' : '?') +
-        `provider=${(findIndex === 'settings'
-          ? process.env.POSTIZ_GENERIC_OAUTH
-            ? 'generic'
-            : 'github'
-          : findIndex
-        ).toUpperCase()}`;
-    return NextResponse.redirect(
-      new URL(`/auth${url}${additional}`, nextUrl.href)
-    );
+
+  // If user is not authenticated and is trying to access /launches,
+  // let the client-side guard handle cases where a token is present.
+  // Only redirect to Clerk sign-in when there is NO token at all.
+  if (nextUrl.pathname.startsWith('/launches') && !authCookie) {
+    const hasTokenInQuery = nextUrl.searchParams.has('token');
+
+    if (!hasTokenInQuery) {
+      const signInPath =
+        process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL || '/sign-in';
+
+      return NextResponse.redirect(new URL(`${signInPath}${url}`, nextUrl.href));
+    }
+
+    // Token is present – allow the request to reach the React guard,
+    // which will call /api/clerk/verify and decide what to do.
+    return NextResponse.next({
+      headers,
+    });
   }
+
+  // Legacy behaviour: for unauthenticated users, redirect everything to /auth.
+  // This has been replaced by Clerk-based sign-in, but kept here for reference.
+  // if (nextUrl.href.indexOf('/auth') === -1 && !authCookie) {
+  //   const providers = ['google', 'settings'];
+  //   const findIndex = providers.find((p) => nextUrl.href.indexOf(p) > -1);
+  //   const additional = !findIndex
+  //     ? ''
+  //     : (url.indexOf('?') > -1 ? '&' : '?') +
+  //       `provider=${(findIndex === 'settings'
+  //         ? process.env.POSTIZ_GENERIC_OAUTH
+  //           ? 'generic'
+  //           : 'github'
+  //         : findIndex
+  //       ).toUpperCase()}`;
+  //   return NextResponse.redirect(
+  //     new URL(`/auth${url}${additional}`, nextUrl.href)
+  //   );
+  // }
 
   // If the url is /auth and the cookie exists, redirect to /
   if (nextUrl.href.indexOf('/auth') > -1 && authCookie) {
