@@ -201,8 +201,8 @@ export const WeekView = () => {
   }, [i18next.resolvedLanguage, startDate]);
 
   return (
-    <div className="flex flex-col text-textColor flex-1">
-      <div className="flex-1 relative">
+    <div className="flex flex-col text-textColor flex-1 min-h-[600px]">
+      <div className="flex-1 relative min-h-[600px]">
         <div className="grid [grid-template-columns:136px_repeat(7,_minmax(0,_1fr))] gap-[4px] rounded-[10px] absolute h-full start-0 top-0 w-full overflow-auto scrollbar scrollbar-thumb-fifth scrollbar-track-newBgColor">
           <div className="z-10 bg-newTableHeader flex justify-center items-center flex-col h-[62px] rounded-[8px] sticky top-0"></div>
           {localizedDays.map((day, index) => (
@@ -329,6 +329,11 @@ export const MonthView = () => {
 };
 export const Calendar = () => {
   const { display } = useCalendar();
+  
+  useEffect(() => {
+    console.log(`[Calendar] Rendering with display: ${display}`);
+  }, [display]);
+  
   return (
     <>
       {display === 'day' ? (

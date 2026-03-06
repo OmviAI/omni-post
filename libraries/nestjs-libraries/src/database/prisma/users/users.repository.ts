@@ -64,6 +64,23 @@ export class UsersRepository {
     });
   }
 
+  // For Clerk authentication: look up user by email without provider restriction
+  getUserByEmailAnyProvider(email: string) {
+    return this._user.model.user.findFirst({
+      where: {
+        email,
+      },
+      include: {
+        picture: {
+          select: {
+            id: true,
+            path: true,
+          },
+        },
+      },
+    });
+  }
+
   activateUser(id: string) {
     return this._user.model.user.update({
       where: {

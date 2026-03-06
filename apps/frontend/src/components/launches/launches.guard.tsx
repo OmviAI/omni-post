@@ -45,75 +45,157 @@ export function LaunchesGuard() {
 
         let session: LaunchesSession | null = null;
 
-        // If we have fresh data in the URL, verify it with Clerk first
+        // If we have fresh data in the URL, exchange Clerk token for our own JWT session
         if (paramsUserId && paramsToken) {
-          const res = await fetch('/api/clerk/verify', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ token: paramsToken }),
+          const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
+          
+          try {
+            const res = await fetch(`${backendUrl}/auth/clerk-session`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              credentials: 'include', // Important: include cookies
+              body: JSON.stringify({ token: paramsToken }),
+            });
+
+            if (!res.ok) {
+              const errorData = await res.json().catch(() => ({}));
+              
+              // If token expired, redirect to sign-in immediately
+              if (errorData.expired || errorData.error?.includes('expired')) {
+                console.warn(
+                  '[LaunchesGuard] Clerk token expired – redirecting to sign-in',
+                );
+                const signInPath =
+                  process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL || '/sign-in';
+                window.location.href = signInPath;
+                return;
+              }
+              
+              console.error('[LaunchesGuard] Token exchange failed:', errorData);
+              throw new Error(
+                errorData.error || `Token exchange failed: ${res.status}`,
+              );
+            }
+
+            const data = await res.json();
+
+            if (!data.success) {
+              console.error('[LaunchesGuard] Token exchange returned success=false');
+              throw new Error('Failed to create session');
+            }
+
+            // After successful exchange, we now have a JWT cookie set by the backend.
+            // The cookie is httpOnly, so we can't check it via document.cookie,
+            // but we trust that if the exchange succeeded, the cookie was set.
+            // Clear any old Clerk token from localStorage
+            window.localStorage.removeItem(LAUNCHES_SESSION_KEY);
+
+            // Fetch full user data from /user/self to ensure organization and other data is loaded
+            // This ensures the UI has all necessary user details (orgId, tier, etc.)
+            try {
+              const userRes = await fetch(`${backendUrl}/user/self`, {
+                method: 'GET',
+                credentials: 'include', // Include the JWT cookie
+              });
+
+              if (userRes.ok) {
+                const userData = await userRes.json();
+                console.log('[LaunchesGuard] User data loaded:', {
+                  userId: userData.id,
+                  orgId: userData.orgId,
+                  tier: userData.tier,
+                });
+              } else {
+                console.warn('[LaunchesGuard] Failed to load user data:', userRes.status);
+              }
+            } catch (error) {
+              console.error('[LaunchesGuard] Error loading user data:', error);
+              // Don't block rendering if user data fetch fails - it will retry in layout component
+            }
+
+            // Strip sensitive params from the URL
+            const url = new URL(window.location.href);
+            url.search = '';
+            window.history.replaceState({}, '', url.toString());
+
+            // Session is now managed by the JWT cookie, not localStorage
+            // Set ready to true so the component renders
+            console.log('[LaunchesGuard] Token exchange successful, session established');
+            setReady(true);
+            return;
+          } catch (error) {
+            console.error('[LaunchesGuard] Error during token exchange:', error);
+            // If exchange fails, redirect to sign-in
+            const signInPath =
+              process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL || '/sign-in';
+            window.location.href = signInPath;
+            return;
+          }
+        } else if (existingRaw) {
+          // Legacy: if there's an old Clerk token in localStorage, try to exchange it
+          try {
+            const oldSession = JSON.parse(existingRaw) as LaunchesSession;
+            if (oldSession.token) {
+              // Try to exchange the old token for a new JWT session
+              const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
+              const res = await fetch(`${backendUrl}/auth/clerk-session`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify({ token: oldSession.token }),
+              });
+
+              if (res.ok) {
+                // Successfully exchanged, remove old token
+                window.localStorage.removeItem(LAUNCHES_SESSION_KEY);
+                setReady(true);
+                return;
+              }
+            }
+          } catch {
+            // If exchange fails, clear the old token and continue
+            window.localStorage.removeItem(LAUNCHES_SESSION_KEY);
+          }
+        }
+
+        // At this point, we're checking if there's an existing JWT session.
+        // Since httpOnly cookies aren't accessible via document.cookie,
+        // we'll make a lightweight API call to verify the session is valid.
+        // If the user previously exchanged a token, the cookie should be set.
+        try {
+          const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
+          // Use a lightweight endpoint to check if session is valid
+          // Try /integrations/list as it requires auth and is fast
+          const testRes = await fetch(`${backendUrl}/integrations/list`, {
+            method: 'GET',
+            credentials: 'include', // Include cookies
           });
 
-          if (!res.ok) {
-            throw new Error('Token verification failed');
+          if (testRes.ok || testRes.status === 200) {
+            // Session is valid, user is authenticated
+            console.log('[LaunchesGuard] Existing JWT session is valid');
+            setReady(true);
+            return;
+          } else if (testRes.status === 401 || testRes.status === 403) {
+            // Session is invalid or expired
+            console.warn('[LaunchesGuard] Session check returned 401/403');
           }
-
-          const data = await res.json();
-          const claims = (data && data.claims) || {};
-
-          // Prefer values coming from Clerk claims over the URL,
-          // but fall back to the URL params if needed.
-          const claimsUserId =
-            (claims && (claims as any).sub) || paramsUserId || '';
-          const claimsEmail =
-            (claims && ((claims as any).email || (claims as any).email_address)) ||
-            paramsEmail ||
-            null;
-          const claimsName =
-            (claims && ((claims as any).name || (claims as any).full_name)) ||
-            paramsName ||
-            null;
-
-          session = {
-            userId: claimsUserId,
-            email: claimsEmail,
-            name: claimsName,
-            token: paramsToken,
-            storedAt: Date.now(),
-            claims,
-          };
-
-          window.localStorage.setItem(
-            LAUNCHES_SESSION_KEY,
-            JSON.stringify(session),
-          );
-
-          // Strip sensitive params from the URL
-          const url = new URL(window.location.href);
-          url.search = '';
-          window.history.replaceState({}, '', url.toString());
-        } else if (existingRaw) {
-          try {
-            session = JSON.parse(existingRaw) as LaunchesSession;
-          } catch {
-            session = null;
-          }
+        } catch (error) {
+          console.error('[LaunchesGuard] Error checking session:', error);
         }
 
-        if (!session) {
-          // No verified session either in URL or localStorage.
-          // For now, don't auto-redirect; just keep the guard not-ready
-          // and let higher-level auth (Clerk + middleware) decide.
-          console.warn(
-            '[LaunchesGuard] No session after verify/localStorage – not redirecting',
-          );
-          return;
-        }
-
-        // At this point we have a verified Clerk-backed session
-        // and can render the launches UI.
-        setReady(true);
+        // No valid session found. Redirect to Clerk sign-in.
+        console.warn(
+          '[LaunchesGuard] No valid JWT session found – redirecting to sign-in',
+        );
+        const signInPath =
+          process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL || '/sign-in';
+        window.location.href = signInPath;
+        return;
       } catch (e) {
         // If anything goes wrong, log it but don't force a redirect here.
         // Middleware / Clerk will handle unauthenticated access.

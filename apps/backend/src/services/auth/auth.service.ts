@@ -252,4 +252,87 @@ export class AuthService {
   private async jwt(user: User) {
     return AuthChecker.signJWT(user);
   }
+
+  /**
+   * Create a JWT session from a Clerk token.
+   * Verifies the Clerk token, finds/creates the user, and returns our own JWT.
+   */
+  async createSessionFromClerkToken(clerkToken: string) {
+    const { verifyToken, createClerkClient } = await import('@clerk/backend');
+    const secretKey = process.env.CLERK_SECRET_KEY;
+    if (!secretKey) {
+      throw new Error('CLERK_SECRET_KEY not configured');
+    }
+
+    const audience = process.env.CLERK_JWT_AUDIENCE;
+    let claims;
+    try {
+      claims = await verifyToken(
+        clerkToken,
+        audience ? { secretKey, audience } : { secretKey },
+      );
+    } catch (error: any) {
+      // Handle expired tokens with a clear error message
+      if (error?.reason === 'token-expired' || error?.message?.includes('expired')) {
+        throw new Error(
+          'Clerk token has expired. Please sign in again to get a fresh token.',
+        );
+      }
+      // Re-throw other verification errors
+      throw new Error(`Invalid Clerk token: ${error?.message || 'Token verification failed'}`);
+    }
+
+    const clerkUserId = (claims as any)?.sub as string | undefined;
+    if (!clerkUserId) {
+      throw new Error('Invalid Clerk token: missing sub claim');
+    }
+
+    // Try to find user by Clerk ID (if User.id matches Clerk userId)
+    let user = await this._userService.getUserById(clerkUserId);
+
+    // If not found by ID, try to get email from Clerk API and find by email
+    if (!user) {
+      const email =
+        // @ts-ignore
+        claims.email ||
+        // @ts-ignore
+        claims.email_address ||
+        // @ts-ignore
+        claims.primary_email;
+
+      if (email) {
+        user = await this._userService.getUserByEmailAnyProvider(email);
+      }
+
+      // If still not found, fetch from Clerk API
+      if (!user && email) {
+        const clerkClient = createClerkClient({ secretKey });
+        try {
+          const clerkUser = await clerkClient.users.getUser(clerkUserId);
+          const clerkEmail =
+            clerkUser.primaryEmailAddress?.emailAddress ||
+            clerkUser.emailAddresses?.[0]?.emailAddress;
+
+          if (clerkEmail) {
+            user = await this._userService.getUserByEmailAnyProvider(clerkEmail);
+          }
+        } catch (err) {
+          console.error('[AuthService] Failed to fetch user from Clerk API:', err);
+        }
+      }
+    }
+
+    if (!user) {
+      throw new Error('User not found for Clerk token');
+    }
+
+    if (!user.activated) {
+      throw new Error('User account is not activated');
+    }
+
+    // Generate our own JWT token
+    const jwt = await this.jwt(user);
+
+    return { jwt, user };
+  }
 }

@@ -99,25 +99,10 @@ export function FetchInterceptor(): null {
         }
       }
 
-      // For all other requests, if we have a Clerk token, attach it as Authorization
-      // but ONLY for our own backend, never for Clerk's own API endpoints.
-      const backendBase = process.env.NEXT_PUBLIC_BACKEND_URL;
-      const isClerkRequest =
-        url.includes('clerk.accounts.dev') || url.includes('clerk.com');
-
-      if (launchesToken && backendBase && url.startsWith(backendBase) && !isClerkRequest) {
-        const headers = new Headers(init?.headers);
-        if (!headers.has('Authorization') && !headers.has('authorization')) {
-          headers.set('Authorization', `Bearer ${launchesToken}`);
-        }
-
-        const newInit: RequestInit = {
-          ...init,
-          headers,
-        };
-
-        return originalFetch(input, newInit);
-      }
+      // Note: We no longer use Clerk tokens from localStorage.
+      // After the initial token exchange, the app uses JWT cookies for authentication.
+      // The backend middleware will read the JWT from the 'auth' cookie automatically.
+      // Cookies are sent automatically with credentials: 'include' (which customFetch sets).
 
       // If no Clerk token, fall back to original fetch
       return originalFetch(input, init);

@@ -81,21 +81,15 @@ export async function middleware(request: NextRequest) {
   const org = nextUrl.searchParams.get('org');
   const url = new URL(nextUrl).search;
 
-  // If user is not authenticated and is trying to access /launches,
-  // let the client-side guard handle cases where a token is present.
-  // Only redirect to Clerk sign-in when there is NO token at all.
-  if (nextUrl.pathname.startsWith('/launches') && !authCookie) {
-    const hasTokenInQuery = nextUrl.searchParams.has('token');
-
-    if (!hasTokenInQuery) {
-      const signInPath =
-        process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL || '/sign-in';
-
-      return NextResponse.redirect(new URL(`${signInPath}${url}`, nextUrl.href));
-    }
-
-    // Token is present – allow the request to reach the React guard,
-    // which will call /api/clerk/verify and decide what to do.
+  // If user is trying to access /launches, always let the client-side guard handle it.
+  // The LaunchesGuard will check:
+  // 1. First: URL query params (if present, verify and store in localStorage)
+  // 2. Second: localStorage (if no params, read from localStorage)
+  // 3. If neither exists, it will handle the redirect to sign-in
+  // We don't redirect here because localStorage is only accessible on the client.
+  if (nextUrl.pathname.startsWith('/launches')) {
+    // Always allow /launches to reach the client-side guard
+    // The guard will check localStorage and redirect if needed
     return NextResponse.next({
       headers,
     });

@@ -1,6 +1,8 @@
 'use client';
 
-import React, { ReactNode, useEffect, useMemo, useState } from 'react';
+import React, { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import useSWR from 'swr';
+import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { Logo } from '@gitroom/frontend/components/new-layout/logo';
 import { Plus_Jakarta_Sans } from 'next/font/google';
 const ModeComponent = dynamic(
@@ -63,24 +65,65 @@ export const LayoutComponent = ({ children }: { children: ReactNode }) => {
   // Feedback icon component attaches Sentry feedback to a top-bar icon when DSN is present
   const searchParams = useSearchParams();
 
-  // Legacy user loading via /user/self is disabled now that Clerk handles auth.
-  // const fetch = useFetch();
-  // const load = useCallback(async (path: string) => {
-  //   return await (await fetch(path)).json();
-  // }, []);
-  // const { data: user, mutate } = useSWR('/user/self', load, {
-  //   revalidateOnFocus: false,
-  //   revalidateOnReconnect: false,
-  //   revalidateIfStale: false,
-  //   refreshWhenOffline: false,
-  //   refreshWhenHidden: false,
-  // });
-
-  // For /launches we allow the route to render (it has its own Clerk token guard)
-  // without requiring a fully populated "app user".
-  if (pathname.startsWith('/launches')) {
-    return <>{children}</>;
-  }
+  // Load full user data from backend after Clerk authentication
+  // This provides orgId, tier, totalChannels, and other app-specific data
+  const fetch = useFetch();
+  const load = useCallback(async (path: string) => {
+    try {
+      const response = await fetch(path);
+      if (!response.ok) {
+        return null;
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('[LayoutComponent] Error loading user data:', error);
+      return null;
+    }
+  }, [fetch]);
+  
+  // Only fetch /user/self if we have a JWT cookie (authenticated via Clerk)
+  // Check for auth cookie to determine if we should fetch
+  const [hasAuthCookie, setHasAuthCookie] = useState(false);
+  useEffect(() => {
+    const checkCookie = () => {
+      if (typeof document !== 'undefined') {
+        const cookie = document.cookie.split(';').find(c => c.trim().startsWith('auth='));
+        const hasCookie = !!cookie;
+        setHasAuthCookie(hasCookie);
+        return hasCookie;
+      }
+      return false;
+    };
+    
+    // Check immediately
+    checkCookie();
+    
+    // Also check periodically (in case cookie is set after mount, e.g., after token exchange)
+    const interval = setInterval(() => {
+      checkCookie();
+    }, 1000);
+    
+    // Check when pathname changes (e.g., after redirect from token exchange)
+    if (pathname) {
+      checkCookie();
+    }
+    
+    return () => clearInterval(interval);
+  }, [pathname]);
+  
+  const { data: backendUser, mutate } = useSWR(
+    hasAuthCookie ? '/user/self' : null,
+    load,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      revalidateIfStale: false,
+      refreshWhenOffline: false,
+      refreshWhenHidden: false,
+      // Revalidate when the key changes (i.e., when hasAuthCookie becomes true)
+      revalidateOnMount: true,
+    }
+  );
 
   const { isLoaded, isSignedIn, user: clerkUser } = useClerkUser();
   const [launchesSession, setLaunchesSession] = useState<LaunchesSession | null>(
@@ -98,7 +141,12 @@ export const LayoutComponent = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const user = useMemo(() => {
-    // Prefer Clerk user when available
+    // Prefer backend user data (from /user/self) when available - it has all the app-specific fields
+    if (backendUser) {
+      return backendUser;
+    }
+
+    // Fallback: use Clerk user data with defaults
     if (isSignedIn && clerkUser) {
       return {
         id: clerkUser.id,
@@ -108,7 +156,7 @@ export const LayoutComponent = ({ children }: { children: ReactNode }) => {
           clerkUser.emailAddresses?.[0]?.emailAddress ||
           '',
 
-        // App-specific fields (previously from /user/self) defaulted for now
+        // App-specific fields defaulted (will be updated when /user/self loads)
         orgId: '',
         tier: 'FREE' as const,
         role: 'USER' as const,
@@ -144,7 +192,85 @@ export const LayoutComponent = ({ children }: { children: ReactNode }) => {
     }
 
     return null;
-  }, [clerkUser, isSignedIn, launchesSession?.email, launchesSession?.name, launchesSession?.userId]);
+  }, [backendUser, clerkUser, isSignedIn, launchesSession?.email, launchesSession?.name, launchesSession?.userId]);
+
+  // For /launches, provide a minimal layout structure without requiring full user data
+  // The LaunchesGuard handles authentication, so we just need the wrapper providers
+  if (pathname.startsWith('/launches')) {
+    // Create a minimal user object for /launches to satisfy ContextWrapper
+    const minimalUser = user || {
+      id: 'temp',
+      name: 'User',
+      email: '',
+      orgId: '',
+      tier: 'FREE' as const,
+      role: 'USER' as const,
+      publicApi: '',
+      totalChannels: 0,
+      admin: false,
+      isLifetime: false,
+      impersonate: false,
+      allowTrial: false,
+      isTrailing: false,
+    };
+
+    return (
+      <ContextWrapper user={minimalUser as any}>
+        <CopilotKit
+          credentials="include"
+          runtimeUrl={backendUrl + '/copilot/chat'}
+          showDevConsole={false}
+        >
+          <MantineWrapper>
+            <ToolTip />
+            <Toaster />
+            <ShowMediaBoxModal />
+            <ShowLinkedinCompany />
+            <MediaSettingsLayout />
+            <ShowPostSelector />
+            <div
+              className={clsx(
+                'flex flex-col min-h-screen min-w-screen text-newTextColor p-[12px]',
+                jakartaSans.className
+              )}
+            >
+              <div className="flex flex-1 gap-[8px]">
+                <Support />
+                <div className="flex flex-col bg-newBgColorInner w-[80px] rounded-[12px]">
+                  <div className="fixed h-full w-[64px] start-[17px] flex flex-1 top-0">
+                    <div className="flex flex-col h-full gap-[32px] flex-1 py-[12px]">
+                      <Logo />
+                      <TopMenu />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex-1 bg-newBgLineColor rounded-[12px] overflow-hidden flex flex-col gap-[1px] blurMe">
+                  <div className="flex bg-newBgColorInner h-[80px] px-[20px] items-center">
+                    <div className="text-[24px] font-[600] flex flex-1">
+                      <Title />
+                    </div>
+                    <div className="flex gap-[20px] text-textItemBlur">
+                      <OrganizationSelector />
+                      <div className="hover:text-newTextColor">
+                        <ModeComponent />
+                      </div>
+                      <div className="w-[1px] h-[20px] bg-blockSeparator" />
+                      <LanguageComponent />
+                      <ChromeExtensionComponent />
+                      <div className="w-[1px] h-[20px] bg-blockSeparator" />
+                      <AttachToFeedbackIcon />
+                      <NotificationComponent />
+                    </div>
+                  </div>
+                  <div className="flex flex-1 gap-[1px] min-h-0">{children}</div>
+                </div>
+              </div>
+            </div>
+          </MantineWrapper>
+        </CopilotKit>
+      </ContextWrapper>
+    );
+  }
 
   // If Clerk is loaded and user is not signed in, send to Clerk sign-in
   if (isLoaded && !user) {
@@ -152,8 +278,6 @@ export const LayoutComponent = ({ children }: { children: ReactNode }) => {
       process.env.NEXT_PUBLIC_CLERK_SIGN_IN_URL || '/sign-in';
     return null;
   }
-
-  const mutate = () => {};
 
   return (
     <ContextWrapper user={user as any}>
@@ -216,7 +340,7 @@ export const LayoutComponent = ({ children }: { children: ReactNode }) => {
                         <NotificationComponent />
                       </div>
                     </div>
-                    <div className="flex flex-1 gap-[1px]">{children}</div>
+                    <div className="flex flex-1 gap-[1px] min-h-0">{children}</div>
                   </div>
                 </div>
               )}

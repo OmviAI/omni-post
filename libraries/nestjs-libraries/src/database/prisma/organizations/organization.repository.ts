@@ -13,6 +13,45 @@ export class OrganizationRepository {
     private _user: PrismaRepository<'user'>
   ) {}
 
+  /**
+   * Create a default organization for an existing user (Clerk flow).
+   * This is used when a user can authenticate (valid Clerk JWT) but has no org membership yet.
+   */
+  async createDefaultOrgForUser(userId: string, name: string) {
+    return this._organization.model.organization.create({
+      data: {
+        name,
+        apiKey: AuthService.fixedEncryption(makeId(20)),
+        allowTrial: true,
+        isTrailing: true,
+        users: {
+          create: {
+            role: UserRole.SUPERADMIN,
+            user: {
+              connect: {
+                id: userId,
+              },
+            },
+          },
+        },
+      },
+      include: {
+        users: {
+          where: { userId },
+          select: { disabled: true, role: true },
+        },
+        subscription: {
+          select: {
+            subscriptionTier: true,
+            totalChannels: true,
+            isLifetime: true,
+            createdAt: true,
+          },
+        },
+      },
+    });
+  }
+
   getOrgByApiKey(api: string) {
     return this._organization.model.organization.findFirst({
       where: {

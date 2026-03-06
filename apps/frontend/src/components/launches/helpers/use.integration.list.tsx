@@ -13,12 +13,19 @@ export const useIntegrationList = () => {
         const response = await fetch(path);
         
         if (!response.ok) {
+          console.error(`[useIntegrationList] Failed to fetch ${path}: ${response.status} ${response.statusText}`);
+          // If 401/403, the user might not be authenticated properly
+          if (response.status === 401 || response.status === 403) {
+            console.error('[useIntegrationList] Authentication failed - check if JWT cookie is set');
+          }
           return [];
         }
         
         const data = await response.json();
+        console.log(`[useIntegrationList] Successfully loaded ${data.integrations?.length || 0} integrations`);
         return data.integrations || [];
       } catch (error) {
+        console.error(`[useIntegrationList] Error fetching ${path}:`, error);
         return [];
       }
     },

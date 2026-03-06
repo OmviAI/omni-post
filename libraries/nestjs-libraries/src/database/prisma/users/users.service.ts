@@ -16,6 +16,11 @@ export class UsersService {
     return this._usersRepository.getUserByEmail(email);
   }
 
+  // For Clerk authentication: look up user by email without provider restriction
+  getUserByEmailAnyProvider(email: string) {
+    return this._usersRepository.getUserByEmailAnyProvider(email);
+  }
+
   getUserById(id: string) {
     return this._usersRepository.getUserById(id);
   }
