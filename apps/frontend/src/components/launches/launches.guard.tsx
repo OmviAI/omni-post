@@ -121,7 +121,6 @@ export function LaunchesGuard() {
             window.history.replaceState({}, '', url.toString());
 
             // Session is now managed by the JWT cookie, not localStorage
-            // Set ready to true so the component renders
             console.log('[LaunchesGuard] Token exchange successful, session established');
             setReady(true);
             return;
