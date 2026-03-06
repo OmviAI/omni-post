@@ -11,7 +11,7 @@ import {
   AnalyticsData,
   SocialProvider,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
-import { Integration, Organization } from '@prisma/client';
+import { Organization, PostIntegration } from '@prisma/client';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
 import dayjs from 'dayjs';
 import { timer } from '@gitroom/helpers/utils/timer';
@@ -180,14 +180,14 @@ export class IntegrationService {
     }
   }
 
-  async disconnectChannel(orgId: string, integration: Integration) {
+  async disconnectChannel(orgId: string, integration: PostIntegration) {
     await this._integrationRepository.disconnectChannel(orgId, integration.id);
     await this.informAboutRefreshError(orgId, integration);
   }
 
   async informAboutRefreshError(
     orgId: string,
-    integration: Integration,
+    integration: PostIntegration,
     err = ''
   ) {
     await this._notificationService.inAppNotification(

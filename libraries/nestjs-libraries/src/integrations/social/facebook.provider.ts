@@ -10,7 +10,7 @@ import dayjs from 'dayjs';
 import { SocialAbstract } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { FacebookDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/facebook.dto';
 import { DribbbleDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/dribbble.dto';
-import { Integration } from '@prisma/client';
+import { PostIntegration } from '@prisma/client';
 
 export class FacebookProvider extends SocialAbstract implements SocialProvider {
   identifier = 'facebook';
@@ -394,7 +394,7 @@ export class FacebookProvider extends SocialAbstract implements SocialProvider {
     lastCommentId: string | undefined,
     accessToken: string,
     postDetails: PostDetails<FacebookDto>[],
-    integration: Integration
+    integration: PostIntegration
   ): Promise<PostResponse[]> {
     const [commentPost] = postDetails;
     const replyToId = lastCommentId || postId;

@@ -1,5 +1,5 @@
 import { PrismaRepository } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
-import { Role, SubscriptionTier } from '@prisma/client';
+import { SubscriptionTier, UserRole } from '@prisma/client';
 import { Injectable } from '@nestjs/common';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { CreateOrgUserDto } from '@gitroom/nestjs-libraries/dtos/auth/create.org.user.dto';
@@ -12,6 +12,45 @@ export class OrganizationRepository {
     private _userOrg: PrismaRepository<'userOrganization'>,
     private _user: PrismaRepository<'user'>
   ) {}
+
+  /**
+   * Create a default organization for an existing user (Clerk flow).
+   * This is used when a user can authenticate (valid Clerk JWT) but has no org membership yet.
+   */
+  async createDefaultOrgForUser(userId: string, name: string) {
+    return this._organization.model.organization.create({
+      data: {
+        name,
+        apiKey: AuthService.fixedEncryption(makeId(20)),
+        allowTrial: true,
+        isTrailing: true,
+        users: {
+          create: {
+            role: UserRole.SUPERADMIN,
+            user: {
+              connect: {
+                id: userId,
+              },
+            },
+          },
+        },
+      },
+      include: {
+        users: {
+          where: { userId },
+          select: { disabled: true, role: true },
+        },
+        subscription: {
+          select: {
+            subscriptionTier: true,
+            totalChannels: true,
+            isLifetime: true,
+            createdAt: true,
+          },
+        },
+      },
+    });
+  }
 
   getOrgByApiKey(api: string) {
     return this._organization.model.organization.findFirst({
@@ -223,7 +262,7 @@ export class OrganizationRepository {
         isTrailing: true,
         users: {
           create: {
-            role: Role.SUPERADMIN,
+            role: UserRole.SUPERADMIN,
             user: {
               create: {
                 activated: body.provider !== 'LOCAL' || !hasEmail,
@@ -321,7 +360,7 @@ export class OrganizationRepository {
       where: {
         organizationId: orgId,
         role: {
-          not: Role.SUPERADMIN,
+          not: UserRole.SUPERADMIN,
         },
       },
       data: {

@@ -12,7 +12,7 @@ import clsx from 'clsx';
 import { useUser } from '../layout/user.context';
 import { Menu } from '@gitroom/frontend/components/launches/menu/menu';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Integration } from '@prisma/client';
+import { PostIntegration } from '@prisma/client';
 import ImageWithFallback from '@gitroom/react/helpers/image.with.fallback';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useFireEvents } from '@gitroom/helpers/utils/use.fire.events';
@@ -73,12 +73,12 @@ export const SVGLine = () => {
 };
 interface MenuComponentInterface {
   refreshChannel: (
-    integration: Integration & {
+    integration: PostIntegration & {
       identifier: string;
     }
   ) => () => void;
   collapsed: boolean;
-  continueIntegration: (integration: Integration) => () => void;
+  continueIntegration: (integration: PostIntegration) => () => void;
   totalNonDisabledChannels: number;
   mutate: (shouldReload?: boolean) => void;
   update: (shouldReload: boolean) => void;
@@ -113,7 +113,7 @@ export const MenuGroupComponent: FC<
       id: string;
       name: string;
       values: Array<
-        Integration & {
+        PostIntegration & {
           identifier: string;
           changeProfilePicture: boolean;
           changeNickName: boolean;
@@ -215,7 +215,7 @@ export const MenuGroupComponent: FC<
 };
 export const MenuComponent: FC<
   MenuComponentInterface & {
-    integration: Integration & {
+    integration: PostIntegration & {
       identifier: string;
       changeProfilePicture: boolean;
       changeNickName: boolean;
@@ -346,7 +346,23 @@ export const MenuComponent: FC<
 };
 export const LaunchesComponent = () => {
   const fetch = useFetch();
-  const user = useUser();
+  const userFromContext = useUser();
+  // Ensure user is always defined with a fallback
+  const user = userFromContext || {
+    id: 'temp',
+    name: 'User',
+    email: '',
+    orgId: '',
+    tier: { ai: false } as any,
+    role: 'USER' as const,
+    publicApi: '',
+    totalChannels: 0,
+    admin: false,
+    isLifetime: false,
+    impersonate: false,
+    allowTrial: false,
+    isTrailing: false,
+  };
   const { billingEnabled } = useVariables();
   const router = useRouter();
   const search = useSearchParams();
@@ -434,7 +450,7 @@ export const LaunchesComponent = () => {
   );
   const refreshChannel = useCallback(
     (
-        integration: Integration & {
+        integration: PostIntegration & {
           identifier: string;
         }
       ) =>
@@ -479,7 +495,18 @@ export const LaunchesComponent = () => {
       window.close();
     }
   }, []);
-  if (isLoading || reload) {
+  // Show loading only on initial load, not on reload
+  // Allow rendering even if integrations are still loading (they'll show empty)
+  if (isLoading && !integrations) {
+    return (
+      <div className="bg-newBgColorInner p-[20px] flex flex-1 flex-col gap-[15px] transition-all items-center justify-center">
+        <LoadingComponent />
+      </div>
+    );
+  }
+  
+  // If reload is true, show loading overlay but still render the component
+  if (reload) {
     return (
       <div className="bg-newBgColorInner p-[20px] flex flex-1 flex-col gap-[15px] transition-all items-center justify-center">
         <LoadingComponent />
@@ -581,9 +608,9 @@ export const LaunchesComponent = () => {
             </div>
           </div>
         </div>
-        <div className="bg-newBgColorInner flex-1 flex-col flex p-[20px] gap-[12px]">
+        <div className="bg-newBgColorInner flex-1 flex-col flex p-[20px] gap-[12px] min-h-0">
           <Filters />
-          <div className="flex-1 flex">
+          <div className="flex-1 flex min-h-0">
             <Calendar />
           </div>
         </div>

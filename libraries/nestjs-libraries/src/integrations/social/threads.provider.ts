@@ -11,7 +11,7 @@ import dayjs from 'dayjs';
 import { SocialAbstract } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { capitalize, chunk } from 'lodash';
 import { Plug } from '@gitroom/helpers/decorators/plug.decorator';
-import { Integration } from '@prisma/client';
+import { PostIntegration } from '@prisma/client';
 import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
 
 export class ThreadsProvider extends SocialAbstract implements SocialProvider {
@@ -391,7 +391,7 @@ export class ThreadsProvider extends SocialAbstract implements SocialProvider {
       active_thread_finisher: boolean;
       thread_finisher: string;
     }>[],
-    integration: Integration
+    integration: PostIntegration
   ): Promise<PostResponse[]> {
     if (!postDetails.length) {
       return [];
@@ -478,7 +478,7 @@ export class ThreadsProvider extends SocialAbstract implements SocialProvider {
     ],
   })
   async autoPlugPost(
-    integration: Integration,
+    integration: PostIntegration,
     id: string,
     fields: { likesAmount: string; post: string }
   ) {
@@ -526,7 +526,7 @@ export class ThreadsProvider extends SocialAbstract implements SocialProvider {
   //   token: string,
   //   data: { query: string },
   //   id: string,
-  //   integration: Integration
+  //   integration: PostIntegration
   // ) {
   //   const p = await (
   //     await fetch(

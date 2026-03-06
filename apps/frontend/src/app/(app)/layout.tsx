@@ -19,6 +19,7 @@ import { headers } from 'next/headers';
 import { headerName } from '@gitroom/react/translation/i18n.config';
 import { HtmlComponent } from '@gitroom/frontend/components/layout/html.component';
 import type { Metadata } from 'next';
+import { ClerkAppProviders } from '../clerk.providers';
 // import dynamicLoad from 'next/dynamic';
 // const SetTimezone = dynamicLoad(
 //   () => import('@gitroom/frontend/components/layout/set.timezone'),
@@ -89,25 +90,27 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
               : []
           }
         >
-          <SentryComponent>
-            {/*<SetTimezone />*/}
-            <HtmlComponent />
-            <DubAnalytics />
-            <FacebookComponent />
-            <Plausible
-              domain={!!process.env.IS_GENERAL ? 'postiz.com' : 'gitroom.com'}
-            >
-              <PHProvider
-                phkey={process.env.NEXT_PUBLIC_POSTHOG_KEY}
-                host={process.env.NEXT_PUBLIC_POSTHOG_HOST}
+          <ClerkAppProviders>
+            <SentryComponent>
+              {/*<SetTimezone />*/}
+              <HtmlComponent />
+              <DubAnalytics />
+              <FacebookComponent />
+              <Plausible
+                domain={!!process.env.IS_GENERAL ? 'postiz.com' : 'gitroom.com'}
               >
-                <LayoutContext>
-                  <UtmSaver />
-                  {children}
-                </LayoutContext>
-              </PHProvider>
-            </Plausible>
-          </SentryComponent>
+                <PHProvider
+                  phkey={process.env.NEXT_PUBLIC_POSTHOG_KEY}
+                  host={process.env.NEXT_PUBLIC_POSTHOG_HOST}
+                >
+                  <LayoutContext>
+                    <UtmSaver />
+                    {children}
+                  </LayoutContext>
+                </PHProvider>
+              </Plausible>
+            </SentryComponent>
+          </ClerkAppProviders>
         </VariableContextComponent>
       </body>
     </html>

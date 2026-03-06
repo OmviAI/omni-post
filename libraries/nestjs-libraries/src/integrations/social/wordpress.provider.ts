@@ -6,7 +6,7 @@ import {
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { SocialAbstract } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import dayjs from 'dayjs';
-import { Integration } from '@prisma/client';
+import { PostIntegration } from '@prisma/client';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { WordpressDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/wordpress.dto';
 import slugify from 'slugify';
@@ -165,7 +165,7 @@ export class WordpressProvider
     id: string,
     accessToken: string,
     postDetails: PostDetails<WordpressDto>[],
-    integration: Integration
+    integration: PostIntegration
   ): Promise<PostResponse[]> {
     const body = JSON.parse(Buffer.from(accessToken, 'base64').toString()) as {
       domain: string;

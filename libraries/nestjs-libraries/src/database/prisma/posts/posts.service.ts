@@ -7,7 +7,7 @@ import { PostsRepository } from '@gitroom/nestjs-libraries/database/prisma/posts
 import { CreatePostDto } from '@gitroom/nestjs-libraries/dtos/posts/create.post.dto';
 import dayjs from 'dayjs';
 import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
-import { Integration, Post, Media, From, State } from '@prisma/client';
+import { PostIntegration, Post, Media, PostState } from '@prisma/client';
 import { GetPostsDto } from '@gitroom/nestjs-libraries/dtos/posts/get.posts.dto';
 import { shuffle } from 'lodash';
 import { CreateGeneratedPostsDto } from '@gitroom/nestjs-libraries/dtos/generator/create.generated.posts.dto';
@@ -32,7 +32,7 @@ import {
 } from '@gitroom/nestjs-libraries/temporal/temporal.search.attribute';
 
 type PostWithConditionals = Post & {
-  integration?: Integration;
+  integration?: PostIntegration;
   childrenPost: Post[];
 };
 
@@ -344,7 +344,7 @@ export class PostsService {
   }
 
   public async checkInternalPlug(
-    integration: Integration,
+    integration: PostIntegration,
     orgId: string,
     id: string,
     settings: any
@@ -375,7 +375,7 @@ export class PostsService {
       return (trigger?.integrations || []).flatMap((int) => ({
         type: 'internal-plug',
         post: id,
-        originalIntegration: integration.id,
+        originalintegration: int.id,
         integration: int.id,
         plugName: trigger.name,
         orgId: orgId,
@@ -585,7 +585,7 @@ export class PostsService {
     return this._openaiService.separatePosts(content, len);
   }
 
-  async changeState(id: string, state: State, err?: any, body?: any) {
+  async changeState(id: string, state: PostState, err?: any, body?: any) {
     return this._postRepository.changeState(id, state, err, body);
   }
 

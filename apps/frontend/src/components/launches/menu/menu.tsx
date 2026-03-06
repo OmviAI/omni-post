@@ -37,7 +37,7 @@ export const Menu: FC<{
   canChangeProfilePicture: boolean;
   canChangeNickName: boolean;
   refreshChannel: (
-    integration: Integration & {
+    integration: PostIntegration & {
       identifier: string;
     }
   ) => () => void;
@@ -179,7 +179,7 @@ export const Menu: FC<{
   }, [integrations, t]);
 
   const copyChannelId = useCallback(
-    (integration: Integrations) => async () => {
+    (integration: PostIntegrations) => async () => {
       setShow(false);
       const channelId = integration.id;
       copy(channelId);
@@ -189,7 +189,7 @@ export const Menu: FC<{
   );
 
   const createPost = useCallback(
-    (integration: Integrations) => async () => {
+    (integration: PostIntegrations) => async () => {
       setShow(false);
 
       const { date } = await (

@@ -9,7 +9,7 @@ import {
   setHandler,
 } from '@temporalio/workflow';
 import dayjs from 'dayjs';
-import { Integration } from '@prisma/client';
+import { PostIntegration } from '@prisma/client';
 import { capitalize, sortBy } from 'lodash';
 import { PostResponse } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
@@ -168,9 +168,9 @@ export async function postWorkflow({
             false,
             'info'
           );
-          
+
           postsResults.push(
-            ...(await postSocial(post.integration as Integration, [
+            ...(await postSocial(post.integration as PostIntegration, [
               postsList[i],
             ]))
           );

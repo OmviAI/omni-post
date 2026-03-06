@@ -1,4 +1,4 @@
-import { Integration } from '@prisma/client';
+import { PostIntegration } from '@prisma/client';
 
 export interface ClientInformation {
   client_id: string;
@@ -75,7 +75,7 @@ export interface ISocialMediaIntegration {
     id: string,
     accessToken: string,
     postDetails: PostDetails[],
-    integration: Integration
+    integration: PostIntegration
   ): Promise<PostResponse[]>; // Schedules a new post
 
   comment?(
@@ -84,7 +84,7 @@ export interface ISocialMediaIntegration {
     lastCommentId: string | undefined,
     accessToken: string,
     postDetails: PostDetails[],
-    integration: Integration
+    integration: PostIntegration
   ): Promise<PostResponse[]>; // Schedules a new post
 }
 
@@ -155,7 +155,7 @@ export interface SocialProvider
     token: string,
     data: { query: string },
     id: string,
-    integration: Integration
+    integration: PostIntegration
   ) => Promise<
     | { id: string; label: string; image: string; doNotCache?: boolean }[]
     | { none: true }

@@ -1,5 +1,5 @@
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
-import { Integration } from '@prisma/client';
+import { PostIntegration } from '@prisma/client';
 import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 import {
@@ -14,7 +14,7 @@ export class RefreshIntegrationService {
     @Inject(forwardRef(() => IntegrationService))
     private _integrationService: IntegrationService
   ) {}
-  async refresh(integration: Integration): Promise<false | AuthTokenDetails> {
+  async refresh(integration: PostIntegration): Promise<false | AuthTokenDetails> {
     const socialProvider = this._integrationManager.getSocialIntegration(
       integration.providerIdentifier
     );
@@ -42,7 +42,7 @@ export class RefreshIntegrationService {
     return refresh;
   }
 
-  public async setBetweenSteps(integration: Integration) {
+  public async setBetweenSteps(integration: PostIntegration) {
     await this._integrationService.setBetweenRefreshSteps(integration.id);
     await this._integrationService.informAboutRefreshError(
       integration.organizationId,
@@ -51,7 +51,7 @@ export class RefreshIntegrationService {
   }
 
   private async refreshProcess(
-    integration: Integration,
+    integration: PostIntegration,
     socialProvider: SocialProvider
   ): Promise<AuthTokenDetails | false> {
     const refresh: false | AuthTokenDetails = await socialProvider

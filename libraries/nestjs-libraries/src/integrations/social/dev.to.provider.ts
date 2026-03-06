@@ -6,7 +6,7 @@ import {
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { SocialAbstract } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import dayjs from 'dayjs';
-import { Integration } from '@prisma/client';
+import { PostIntegration } from '@prisma/client';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { DevToSettingsDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/dev.to.settings.dto';
 import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
@@ -148,7 +148,7 @@ export class DevToProvider extends SocialAbstract implements SocialProvider {
     id: string,
     accessToken: string,
     postDetails: PostDetails[],
-    integration: Integration
+    integration: PostIntegration
   ): Promise<PostResponse[]> {
     const { settings } = postDetails?.[0] || { settings: {} };
     const { id: postId, url } = await (

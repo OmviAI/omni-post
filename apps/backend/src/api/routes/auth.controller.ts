@@ -22,13 +22,15 @@ import { RealIP } from 'nestjs-real-ip';
 import { UserAgent } from '@gitroom/nestjs-libraries/user/user.agent';
 import { Provider } from '@prisma/client';
 import * as Sentry from '@sentry/nestjs';
+import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
 
 @ApiTags('Auth')
 @Controller('/auth')
 export class AuthController {
   constructor(
     private _authService: AuthService,
-    private _emailService: EmailService
+    private _emailService: EmailService,
+    private _organizationService: OrganizationService
   ) { }
 
   @Get('/can-register')
@@ -255,10 +257,10 @@ export class AuthController {
       domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
       ...(!process.env.NOT_SECURED
         ? {
-          secure: true,
-          httpOnly: true,
-          sameSite: 'none',
-        }
+            secure: true,
+            httpOnly: true,
+            sameSite: 'none',
+          }
         : {}),
       expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
     });
@@ -272,5 +274,133 @@ export class AuthController {
     response.status(200).json({
       login: true,
     });
+  }
+
+  /**
+   * Exchange a Clerk token for our own JWT session.
+   * This is called once when the user first arrives with a Clerk token in the URL.
+   * After this, the app uses our own JWT cookie for authentication.
+   */
+  @Post('/clerk-session')
+  async createClerkSession(
+    @Body('token') clerkToken: string,
+    @Req() req: Request,
+    @Res({ passthrough: false }) response: Response,
+    @RealIP() ip: string,
+    @UserAgent() userAgent: string
+  ) {
+    try {
+      if (!clerkToken) {
+        return response.status(400).json({ error: 'Missing Clerk token' });
+      }
+
+      const { jwt, user } = await this._authService.createSessionFromClerkToken(
+        clerkToken,
+      );
+
+      // Get user's organizations
+      const organizations = await this._organizationService.getOrgsByUserId(
+        user.id,
+      );
+
+      // If user has no org, create a default one
+      let setOrg = organizations.find(
+        (org) => org.id === req.cookies.showorg || req.headers.showorg,
+      ) || organizations[0];
+
+      if (!setOrg && organizations.length === 0) {
+        // Create default org for user
+        const defaultOrg = await this._organizationService.createDefaultOrgForUser(
+          user.id,
+          user.name || user.email || 'My Organization',
+        );
+        setOrg = defaultOrg;
+      }
+
+      if (!setOrg) {
+        return response.status(400).json({ error: 'No organization found' });
+      }
+
+      // Ensure org has an API key
+      if (!setOrg.apiKey) {
+        await this._organizationService.updateApiKey(setOrg.id);
+      }
+
+      // Set JWT cookie (same as login flow)
+      // For localhost, don't set domain (undefined works better)
+      const frontendUrl = process.env.FRONTEND_URL || '';
+      const cookieDomain = frontendUrl.includes('localhost') 
+        ? undefined 
+        : getCookieUrlFromDomain(frontendUrl);
+      
+      const cookieOptions: any = {
+        path: '/',
+        expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
+      };
+      
+      if (cookieDomain) {
+        cookieOptions.domain = cookieDomain;
+      }
+      
+      if (!process.env.NOT_SECURED) {
+        cookieOptions.secure = true;
+        cookieOptions.httpOnly = true;
+        cookieOptions.sameSite = 'none';
+      }
+      
+      response.cookie('auth', jwt, cookieOptions);
+
+      // Always send auth header so frontend can set cookie client-side if needed
+      response.header('auth', jwt);
+
+      // Set organization cookie
+      if (setOrg.id) {
+        const orgCookieOptions: any = {
+          path: '/',
+          expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
+        };
+        
+        if (cookieDomain) {
+          orgCookieOptions.domain = cookieDomain;
+        }
+        
+        if (!process.env.NOT_SECURED) {
+          orgCookieOptions.secure = true;
+          orgCookieOptions.httpOnly = true;
+          orgCookieOptions.sameSite = 'none';
+        }
+        
+        response.cookie('showorg', setOrg.id, orgCookieOptions);
+        response.header('showorg', setOrg.id);
+      }
+
+      response.header('reload', 'true');
+      response.status(200).json({
+        success: true,
+        login: true,
+      });
+    } catch (e: any) {
+      console.error('[AuthController] Error creating Clerk session:', e);
+      
+      // Provide specific error messages for common cases
+      let statusCode = 401;
+      let errorMessage = e.message || 'Invalid Clerk token';
+      
+      if (errorMessage.includes('expired')) {
+        statusCode = 401;
+        errorMessage = 'Clerk token has expired. Please sign in again.';
+      } else if (errorMessage.includes('not found')) {
+        statusCode = 404;
+        errorMessage = 'User not found. Please ensure your account exists.';
+      } else if (errorMessage.includes('not activated')) {
+        statusCode = 403;
+        errorMessage = 'User account is not activated.';
+      }
+      
+      response.status(statusCode).json({ 
+        error: errorMessage,
+        expired: errorMessage.includes('expired'),
+      });
+    }
   }
 }

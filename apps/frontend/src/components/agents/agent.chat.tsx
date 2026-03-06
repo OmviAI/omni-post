@@ -483,7 +483,7 @@ const OpenModal: FC<{
             <ExistingDataContextProvider
               value={{
                 group,
-                integration: integration.integrationId,
+                integration: PostIntegration.integrationId,
                 integrationPicture:
                   properties.find((p) => p.id === integration.integrationId)
                     .picture || '',

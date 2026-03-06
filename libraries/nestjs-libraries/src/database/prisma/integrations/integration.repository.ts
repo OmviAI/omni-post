@@ -1,7 +1,7 @@
 import { PrismaRepository } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import { Injectable } from '@nestjs/common';
 import dayjs from 'dayjs';
-import { Integration } from '@prisma/client';
+import { PostIntegration } from '@prisma/client';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { IntegrationTimeDto } from '@gitroom/nestjs-libraries/dtos/integrations/integration.time.dto';
 import { UploadFactory } from '@gitroom/nestjs-libraries/upload/upload.factory';
@@ -11,7 +11,7 @@ import { PlugDto } from '@gitroom/nestjs-libraries/dtos/plugs/plug.dto';
 export class IntegrationRepository {
   private storage = UploadFactory.createStorage();
   constructor(
-    private _integration: PrismaRepository<'integration'>,
+    private _integration: PrismaRepository<'postIntegration'>,
     private _posts: PrismaRepository<'post'>,
     private _plugs: PrismaRepository<'plugs'>,
     private _exisingPlugData: PrismaRepository<'exisingPlugData'>,
@@ -69,7 +69,7 @@ export class IntegrationRepository {
   }
 
   async checkPreviousConnections(org: string, id: string) {
-    const findIt = await this._integration.model.integration.findMany({
+    const findIt = await this._integration.model.postIntegration.findMany({
       where: {
         rootInternalId: id.split('_').pop(),
       },
@@ -87,7 +87,7 @@ export class IntegrationRepository {
   }
 
   updateProviderSettings(org: string, id: string, settings: string) {
-    return this._integration.model.integration.update({
+    return this._integration.model.postIntegration.update({
       where: {
         id,
         organizationId: org,
@@ -99,7 +99,7 @@ export class IntegrationRepository {
   }
 
   async setTimes(org: string, id: string, times: IntegrationTimeDto) {
-    return this._integration.model.integration.update({
+    return this._integration.model.postIntegration.update({
       select: {
         id: true,
       },
@@ -142,7 +142,7 @@ export class IntegrationRepository {
     });
   }
 
-  async updateIntegration(id: string, params: Partial<Integration>) {
+  async updateIntegration(id: string, params: Partial<PostIntegration>) {
     if (
       params.picture &&
       (params.picture.indexOf(process.env.CLOUDFLARE_BUCKET_URL!) === -1 ||
@@ -151,7 +151,7 @@ export class IntegrationRepository {
       params.picture = await this.storage.uploadSimple(params.picture);
     }
 
-    return this._integration.model.integration.update({
+    return this._integration.model.postIntegration.update({
       where: {
         id,
       },
@@ -162,7 +162,7 @@ export class IntegrationRepository {
   }
 
   disconnectChannel(org: string, id: string) {
-    return this._integration.model.integration.update({
+    return this._integration.model.postIntegration.update({
       where: {
         id,
         organizationId: org,
@@ -208,7 +208,7 @@ export class IntegrationRepository {
           ]),
         }
       : {};
-    const upsert = await this._integration.model.integration.upsert({
+    const upsert = await this._integration.model.postIntegration.upsert({
       where: {
         organizationId_internalId: {
           internalId,
@@ -266,7 +266,7 @@ export class IntegrationRepository {
     if (oneTimeToken) {
       const rootId =
         (
-          await this._integration.model.integration.findFirst({
+          await this._integration.model.postIntegration.findFirst({
             where: {
               organizationId: org,
               internalId: internalId,
@@ -274,7 +274,7 @@ export class IntegrationRepository {
           })
         )?.rootInternalId || internalId.split('_').pop()!;
 
-      await this._integration.model.integration.updateMany({
+      await this._integration.model.postIntegration.updateMany({
         where: {
           id: {
             not: upsert.id,
@@ -297,7 +297,7 @@ export class IntegrationRepository {
   }
 
   needsToBeRefreshed() {
-    return this._integration.model.integration.findMany({
+    return this._integration.model.postIntegration.findMany({
       where: {
         tokenExpiration: {
           lte: dayjs().add(1, 'day').toDate(),
@@ -310,7 +310,7 @@ export class IntegrationRepository {
   }
 
   async setBetweenRefreshSteps(id: string) {
-    return this._integration.model.integration.update({
+    return this._integration.model.postIntegration.update({
       where: {
         id,
       },
@@ -320,7 +320,7 @@ export class IntegrationRepository {
     });
   }
   refreshNeeded(org: string, id: string) {
-    return this._integration.model.integration.update({
+    return this._integration.model.postIntegration.update({
       where: {
         id,
         organizationId: org,
@@ -332,7 +332,7 @@ export class IntegrationRepository {
   }
 
   updateNameAndUrl(id: string, name: string, url: string) {
-    return this._integration.model.integration.update({
+    return this._integration.model.postIntegration.update({
       where: {
         id,
       },
@@ -344,7 +344,7 @@ export class IntegrationRepository {
   }
 
   getIntegrationById(org: string, id: string) {
-    return this._integration.model.integration.findFirst({
+    return this._integration.model.postIntegration.findFirst({
       where: {
         organizationId: org,
         id,
@@ -404,7 +404,7 @@ export class IntegrationRepository {
           },
         }));
 
-    return this._integration.model.integration.update({
+    return this._integration.model.postIntegration.update({
       where: {
         id,
         organizationId: org,
@@ -422,7 +422,7 @@ export class IntegrationRepository {
   }
 
   updateIntegrationGroup(org: string, id: string, group: string) {
-    return this._integration.model.integration.update({
+    return this._integration.model.postIntegration.update({
       where: {
         id,
         organizationId: org,
@@ -453,7 +453,7 @@ export class IntegrationRepository {
   }
 
   getIntegrationsList(org: string) {
-    return this._integration.model.integration.findMany({
+    return this._integration.model.postIntegration.findMany({
       where: {
         organizationId: org,
         deletedAt: null,
@@ -465,7 +465,7 @@ export class IntegrationRepository {
   }
 
   async disableChannel(org: string, id: string) {
-    await this._integration.model.integration.update({
+    await this._integration.model.postIntegration.update({
       where: {
         id,
         organizationId: org,
@@ -477,7 +477,7 @@ export class IntegrationRepository {
   }
 
   async enableChannel(org: string, id: string) {
-    await this._integration.model.integration.update({
+    await this._integration.model.postIntegration.update({
       where: {
         id,
         organizationId: org,
@@ -500,7 +500,7 @@ export class IntegrationRepository {
   }
 
   deleteChannel(org: string, id: string) {
-    return this._integration.model.integration.update({
+    return this._integration.model.postIntegration.update({
       where: {
         id,
         organizationId: org,
@@ -512,7 +512,7 @@ export class IntegrationRepository {
   }
 
   async checkForDeletedOnceAndUpdate(org: string, page: string) {
-    return this._integration.model.integration.updateMany({
+    return this._integration.model.postIntegration.updateMany({
       where: {
         organizationId: org,
         internalId: page,
@@ -527,7 +527,7 @@ export class IntegrationRepository {
   }
 
   async disableIntegrations(org: string, totalChannels: number) {
-    const getChannels = await this._integration.model.integration.findMany({
+    const getChannels = await this._integration.model.postIntegration.findMany({
       where: {
         organizationId: org,
         disabled: false,
@@ -540,7 +540,7 @@ export class IntegrationRepository {
     });
 
     for (const channel of getChannels) {
-      await this._integration.model.integration.update({
+      await this._integration.model.postIntegration.update({
         where: {
           id: channel.id,
         },
@@ -628,7 +628,7 @@ export class IntegrationRepository {
   }
 
   async getPostingTimes(orgId: string, integrationsId?: string) {
-    return this._integration.model.integration.findMany({
+    return this._integration.model.postIntegration.findMany({
       where: {
         ...(integrationsId ? { id: integrationsId } : {}),
         organizationId: orgId,

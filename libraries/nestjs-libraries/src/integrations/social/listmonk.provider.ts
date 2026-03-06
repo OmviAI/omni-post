@@ -7,7 +7,7 @@ import {
   SocialProvider,
 } from './social.integrations.interface';
 import dayjs from 'dayjs';
-import { Integration } from '@prisma/client';
+import { PostIntegration } from '@prisma/client';
 import { ListmonkDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/listmonk.dto';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import slugify from 'slugify';
@@ -115,7 +115,7 @@ export class ListmonkProvider extends SocialAbstract implements SocialProvider {
     token: string,
     data: any,
     internalId: string,
-    integration: Integration
+    integration: PostIntegration
   ) {
     const body: { url: string; username: string; password: string } =
       JSON.parse(
@@ -142,7 +142,7 @@ export class ListmonkProvider extends SocialAbstract implements SocialProvider {
     token: string,
     data: any,
     internalId: string,
-    integration: Integration
+    integration: PostIntegration
   ) {
     const body: { url: string; username: string; password: string } =
       JSON.parse(
@@ -171,7 +171,7 @@ export class ListmonkProvider extends SocialAbstract implements SocialProvider {
     id: string,
     accessToken: string,
     postDetails: PostDetails<ListmonkDto>[],
-    integration: Integration
+    integration: PostIntegration
   ): Promise<PostResponse[]> {
     const body: { url: string; username: string; password: string } =
       JSON.parse(
