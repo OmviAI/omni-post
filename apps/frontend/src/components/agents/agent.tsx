@@ -18,7 +18,7 @@ import Image from 'next/image';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useWaitForClass } from '@gitroom/helpers/utils/use.wait.for.class';
 import { MultiMediaComponent } from '@gitroom/frontend/components/media/media.component';
-import { Integration } from '@prisma/client';
+import { PostIntegration } from '@prisma/client';
 import Link from 'next/link';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
