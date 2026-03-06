@@ -133,6 +133,7 @@ export function LaunchesGuard() {
             window.location.href = signInPath;
             return;
           }
+          
         } else if (existingRaw) {
           // Legacy: if there's an old Clerk token in localStorage, try to exchange it
           try {
