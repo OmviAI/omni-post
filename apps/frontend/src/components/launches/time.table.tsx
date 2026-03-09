@@ -16,6 +16,7 @@ import { sortBy } from 'lodash';
 import { usePreventWindowUnload } from '@gitroom/react/helpers/use.prevent.window.unload';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
+import { PostIntegration } from '@prisma/client';
 dayjs.extend(utc);
 dayjs.extend(timezone);
 const hours = [...Array(24).keys()].map((i, index) => ({
@@ -25,7 +26,7 @@ const minutes = [...Array(60).keys()].map((i, index) => ({
   value: index,
 }));
 export const TimeTable: FC<{
-  integration: PostIntegrations;
+  integration: PostIntegration;
   mutate: () => void;
 }> = (props) => {
   const t = useT();

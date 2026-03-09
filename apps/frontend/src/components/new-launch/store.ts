@@ -7,6 +7,7 @@ import { createRef, RefObject } from 'react';
 import { arrayMoveImmutable } from 'array-move';
 import { PostComment } from '@gitroom/frontend/components/new-launch/providers/high.order.provider';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
+import { PostIntegration } from '@prisma/client';
 
 interface Values {
   id: string;
@@ -16,13 +17,13 @@ interface Values {
 }
 
 export interface Internal {
-  integration: PostIntegrations;
+  integration: PostIntegration;
   integrationValue: Values[];
 }
 
 export interface SelectedIntegrations {
   settings: any;
-  integration: PostIntegrations;
+  integration: PostIntegration;
   ref?: RefObject<any>;
 }
 
@@ -103,7 +104,7 @@ interface StoreState {
   setAllIntegrations: (integrations: Integrations[]) => void;
   setCurrent: (current: string) => void;
   addOrRemoveSelectedIntegration: (
-    integration: PostIntegrations,
+    integration: PostIntegration,
     settings: any
   ) => void;
   reset: () => void;
@@ -165,7 +166,7 @@ export const useLaunchStore = create<StoreState>()((set) => ({
       current: current,
     })),
   addOrRemoveSelectedIntegration: (
-    integration: PostIntegrations,
+    integration: PostIntegration,
     settings: any
   ) => {
     set((state) => {
@@ -297,7 +298,7 @@ export const useLaunchStore = create<StoreState>()((set) => ({
         internal: [
           ...state.internal,
           {
-            integration: PostIntegration.integration,
+            integration: integration!.integration,
             integrationValue: state.global.slice(0).map((p) => p),
           },
         ],
