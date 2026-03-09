@@ -35,7 +35,7 @@ import clsx from 'clsx';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { ExistingDataContextProvider } from '@gitroom/frontend/components/launches/helpers/use.existing.data';
 import { useDrag, useDrop } from 'react-dnd';
-import { Integration, Post, PostIntegration, State, Tags } from '@prisma/client';
+import { Integration, Post, PostIntegration, PostState, Tags } from '@prisma/client';
 import { useAddProvider } from '@gitroom/frontend/components/launches/add.provider.component';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useUser } from '@gitroom/frontend/components/layout/user.context';
@@ -799,7 +799,7 @@ const CalendarItem: FC<{
   deletePost: () => void;
   statistics: () => void;
   integrations: Integrations[];
-  state: State;
+  state: PostState;
   display: 'day' | 'week' | 'month';
   post: Post & {
     integration: PostIntegration;
