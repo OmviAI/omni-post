@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { useCopilotAction, useCopilotReadable } from '@copilotkit/react-core';
 import { useStateCallback } from '@gitroom/react/helpers/use.state.callback';
 import { timer } from '@gitroom/helpers/utils/timer';
+import { PostIntegration } from '@prisma/client';
 export const PickPlatforms: FC<{
   integrations: Integrations[];
   selectedIntegrations: Integrations[];
@@ -67,7 +68,7 @@ export const PickPlatforms: FC<{
     }
   );
   const addPlatform = useCallback(
-    (integration: PostIntegrations) => async () => {
+    (integration: PostIntegration) => async () => {
       const promises = [];
       if (props.singleSelect) {
         promises.push(

@@ -4,9 +4,10 @@ import { createContext, useContext } from 'react';
 import { Integrations } from '@gitroom/frontend/components/launches/calendar.context';
 import dayjs from 'dayjs';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
+import { PostIntegration } from '@prisma/client';
 export const IntegrationContext = createContext<{
   date: dayjs.Dayjs;
-  integration: PostIntegrations | undefined;
+  integration: PostIntegration | undefined;
   allIntegrations: Integrations[];
   value: Array<{
     content: string;
