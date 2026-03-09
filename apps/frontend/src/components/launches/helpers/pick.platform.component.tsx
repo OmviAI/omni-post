@@ -68,7 +68,7 @@ export const PickPlatforms: FC<{
     }
   );
   const addPlatform = useCallback(
-    (integration: PostIntegration) => async () => {
+    (integration: Integrations) => async () => {
       const promises = [];
       if (props.singleSelect) {
         promises.push(

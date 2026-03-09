@@ -10,9 +10,8 @@ import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import { showMediaBox } from '@gitroom/frontend/components/media/media.component';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
-import { PostIntegration } from '@prisma/client';
 export const BotPicture: FC<{
-  integration: PostIntegration;
+  integration: Integrations;
   canChangeProfilePicture: boolean;
   canChangeNickName: boolean;
   mutate: () => void;

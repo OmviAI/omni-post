@@ -17,13 +17,13 @@ interface Values {
 }
 
 export interface Internal {
-  integration: PostIntegration;
+  integration: Integrations;
   integrationValue: Values[];
 }
 
 export interface SelectedIntegrations {
   settings: any;
-  integration: PostIntegration;
+  integration: Integrations;
   ref?: RefObject<any>;
 }
 
@@ -104,7 +104,7 @@ interface StoreState {
   setAllIntegrations: (integrations: Integrations[]) => void;
   setCurrent: (current: string) => void;
   addOrRemoveSelectedIntegration: (
-    integration: PostIntegration,
+    integration: Integrations,
     settings: any
   ) => void;
   reset: () => void;
@@ -166,7 +166,7 @@ export const useLaunchStore = create<StoreState>()((set) => ({
       current: current,
     })),
   addOrRemoveSelectedIntegration: (
-    integration: PostIntegration,
+    integration: Integrations,
     settings: any
   ) => {
     set((state) => {
