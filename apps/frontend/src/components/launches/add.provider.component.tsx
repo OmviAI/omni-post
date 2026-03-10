@@ -430,28 +430,39 @@ export const AddProviderComponent: FC<{
 
   const t = useT();
 
+  // Allowed platforms - only these will be enabled
+  const allowedPlatforms = ['instagram', 'facebook', 'discord', 'telegram', 'x'];
+  
+  // Also allow instagram-standalone variant
+  const isPlatformEnabled = (identifier: string) => {
+    return allowedPlatforms.includes(identifier) || identifier === 'instagram-standalone';
+  };
+
   return (
     <div className="w-full flex flex-col gap-[20px] rounded-[4px] relative">
       <div className="flex flex-col">
         <div className="grid grid-cols-5 gap-[10px] justify-items-center justify-center">
-          {social.map((item) => (
+          {social.map((item) => {
+            const isEnabled = isPlatformEnabled(item.identifier);
+            return (
             <div
               key={item.identifier}
-              onClick={getSocialLink(
+              onClick={isEnabled ? getSocialLink(
                 item.identifier,
                 item.isExternal,
                 item.isWeb3,
                 item.customFields
-              )}
+              ) : undefined}
               {...(!!item.toolTip
                 ? {
                     'data-tooltip-id': 'tooltip',
                     'data-tooltip-content': item.toolTip,
                   }
                 : {})}
-              className={
-                'w-full h-[100px] text-[14px] p-[10px] rounded-[8px] bg-newTableHeader text-textColor relative justify-center items-center flex flex-col gap-[10px] cursor-pointer'
-              }
+              className={clsx(
+                'w-full h-[100px] text-[14px] p-[10px] rounded-[8px] bg-newTableHeader text-textColor relative justify-center items-center flex flex-col gap-[10px]',
+                isEnabled ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
+              )}
             >
               <div>
                 {item.identifier === 'youtube' ? (
@@ -482,7 +493,8 @@ export const AddProviderComponent: FC<{
                 )}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
       {!isGeneral && (
