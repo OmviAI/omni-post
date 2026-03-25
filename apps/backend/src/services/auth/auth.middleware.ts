@@ -1,7 +1,7 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
-import { User } from '@prisma/client';
+import { Provider, User } from '@prisma/client';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
 import { getCookieUrlFromDomain } from '@gitroom/helpers/subdomain/subdomain.management';
@@ -175,6 +175,42 @@ export class AuthMiddleware implements NestMiddleware {
       if (!user) {
         throw new HttpForbiddenException();
       }
+
+      // If auth came from our legacy JWT, the payload may be stale (e.g. user id differs across environments).
+      // Prefer the canonical DB user record when possible.
+      try {
+        const dbUserById = await this._userService.getUserById(user.id);
+        if (dbUserById) {
+          user = dbUserById;
+        } else if (user.email) {
+          const dbUserByEmail = await this._userService.getUserByEmailAnyProvider(
+            user.email,
+          );
+          if (dbUserByEmail) {
+            user = dbUserByEmail;
+          }
+        }
+      } catch {
+        // If lookup fails, continue with token-provided user and let ensureUserExists handle persistence.
+      }
+
+      // Ensure the authenticated identity exists as a persisted User record.
+      // In some environments (e.g. fresh deploy DB) a valid JWT can be presented before the user row exists,
+      // which breaks org auto-provisioning that uses nested `connect`.
+      if (!user.email) {
+        console.error(
+          `[AuthMiddleware] Authenticated user ${user.id} has no email; cannot ensure user exists in DB`,
+        );
+        throw new HttpForbiddenException();
+      }
+      user = await this._userService.ensureUserExists({
+        id: user.id,
+        email: user.email,
+        name: user.name ?? null,
+        providerName: (user as any).providerName ?? Provider.GENERIC,
+        providerId: (user as any).providerId ?? null,
+        activated: user.activated ?? true,
+      });
 
       if (!user.activated) {
         throw new HttpForbiddenException();

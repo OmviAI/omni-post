@@ -9,6 +9,41 @@ import { EmailNotificationsDto } from '@gitroom/nestjs-libraries/dtos/users/emai
 export class UsersRepository {
   constructor(private _user: PrismaRepository<'user'>) {}
 
+  /**
+   * Ensure a User row exists for a given authenticated identity.
+   * Some auth flows (e.g. stateless JWTs) may validate without guaranteeing the user is persisted.
+   */
+  async ensureUserExists(input: {
+    id: string;
+    email: string;
+    name?: string | null;
+    providerName?: Provider | null;
+    providerId?: string | null;
+    activated?: boolean | null;
+  }) {
+    const update: Record<string, any> = {};
+    if (input.email) update.email = input.email;
+    if (input.name !== undefined) update.name = input.name;
+    if (input.providerName !== undefined) update.providerName = input.providerName;
+    if (input.providerId !== undefined) update.providerId = input.providerId;
+    if (input.activated !== undefined && input.activated !== null)
+      update.activated = input.activated;
+
+    return this._user.model.user.upsert({
+      where: { id: input.id },
+      create: {
+        id: input.id,
+        email: input.email,
+        name: input.name ?? null,
+        providerName: input.providerName ?? Provider.GENERIC,
+        providerId: input.providerId ?? null,
+        activated: input.activated ?? true,
+        timezone: 0,
+      },
+      update,
+    });
+  }
+
   getImpersonateUser(name: string) {
     return this._user.model.user.findMany({
       where: {
