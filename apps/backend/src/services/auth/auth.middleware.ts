@@ -36,6 +36,14 @@ export class AuthMiddleware implements NestMiddleware {
     if (req.path.includes('/copilot/')) {
       console.log(`[AuthMiddleware] Copilot request - Path: ${req.path}, HasAuthHeader: ${!!req.headers.auth}, HasAuthCookie: ${!!req.cookies.auth}, AllHeaders: ${JSON.stringify(Object.keys(req.headers))}, AllCookies: ${JSON.stringify(Object.keys(req.cookies || {}))}`);
     }
+
+    // Lightweight targeted logs for production debugging of common 401s.
+    // Avoid dumping sensitive values; just presence + key routing fields.
+    if (req.path === '/user/self' || req.path === '/integrations/list') {
+      console.log(
+        `[AuthMiddleware] Request - Path: ${req.path}, HasAuthHeader: ${!!req.headers.auth}, HasAuthCookie: ${!!req.cookies?.auth}, HasShowOrgHeader: ${!!req.headers.showorg}, HasShowOrgCookie: ${!!req.cookies?.showorg}`,
+      );
+    }
     
     // 1) Prefer Authorization: Bearer <clerk-jwt> when present
     const authHeader =
