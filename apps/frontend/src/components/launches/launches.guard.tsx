@@ -6,6 +6,16 @@ import { LaunchesComponent } from '@gitroom/frontend/components/launches/launche
 
 const LAUNCHES_SESSION_KEY = 'launches_clerk_session';
 
+// Fallback cookie setter (non-httpOnly) used when cross-domain httpOnly cookies can't be set.
+// The app's custom fetch wrapper can forward this cookie value as an `auth` header.
+function setClientCookie(name: string, value: string, days: number) {
+  if (typeof document === 'undefined') return;
+  const d = new Date();
+  d.setTime(d.getTime() + days * 24 * 60 * 60 * 1000);
+  const expires = 'expires=' + d.toUTCString();
+  document.cookie = `${name}=${value};${expires};path=/`;
+}
+
 type LaunchesSession = {
   userId: string;
   email?: string | null;
@@ -20,7 +30,7 @@ type LaunchesSession = {
  * Client-side guard for the /launches route.
  *
  * Behaviour:
- * - On first visit with query params (?userId=&email=&name=&token=),
+ * - On first visit with query params (?userId=&token=, optional: email, name),
  *   it stores them in localStorage and strips the query from the URL.
  * - On subsequent visits, it reads from localStorage.
  * - If no valid session is found, it redirects back to the auth source
@@ -35,8 +45,6 @@ export function LaunchesGuard() {
       try {
         const paramsUserId = searchParams.get('userId');
         const paramsToken = searchParams.get('token');
-        const paramsEmail = searchParams.get('email');
-        const paramsName = searchParams.get('name');
 
         const existingRaw =
           typeof window !== 'undefined'
@@ -50,6 +58,20 @@ export function LaunchesGuard() {
           const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
           
           try {
+            // IMPORTANT:
+            // If the user is already logged in (old auth cookie), and they open a /launches link
+            // with a NEW Clerk token, we must clear the previous backend session first.
+            // Otherwise the browser can keep sending the old cookie and downstream list APIs may 401.
+            try {
+              await fetch(`${backendUrl}/user/logout`, {
+                method: 'POST',
+                credentials: 'include',
+              });
+            } catch (e) {
+              // Don't block token exchange if logout fails (cookie may already be absent).
+              console.warn('[LaunchesGuard] Pre-exchange logout failed (continuing):', e);
+            }
+
             const res = await fetch(`${backendUrl}/auth/clerk-session`, {
               method: 'POST',
               headers: {
@@ -86,6 +108,16 @@ export function LaunchesGuard() {
               throw new Error('Failed to create session');
             }
 
+            // If the browser blocks Set-Cookie (common when backend/frontend are on different eTLD+1),
+            // persist JWT + org from response headers as a non-httpOnly cookie fallback.
+            // This matches what `LayoutContext` does in its `afterRequest` handler, but this guard
+            // uses raw fetch so we must handle it here too.
+            const headerAuth = res.headers.get('auth') || res.headers.get('Auth');
+            const headerShowOrg =
+              res.headers.get('showorg') || res.headers.get('Showorg');
+            if (headerAuth) setClientCookie('auth', headerAuth, 365);
+            if (headerShowOrg) setClientCookie('showorg', headerShowOrg, 365);
+
             // After successful exchange, we now have a JWT cookie set by the backend.
             // The cookie is httpOnly, so we can't check it via document.cookie,
             // but we trust that if the exchange succeeded, the cookie was set.
@@ -97,6 +129,10 @@ export function LaunchesGuard() {
             try {
               const userRes = await fetch(`${backendUrl}/user/self`, {
                 method: 'GET',
+                headers: {
+                  ...(headerAuth ? { auth: headerAuth } : {}),
+                  ...(headerShowOrg ? { showorg: headerShowOrg } : {}),
+                },
                 credentials: 'include', // Include the JWT cookie
               });
 
