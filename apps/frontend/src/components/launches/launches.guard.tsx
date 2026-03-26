@@ -16,6 +16,14 @@ function setClientCookie(name: string, value: string, days: number) {
   document.cookie = `${name}=${value};${expires};path=/`;
 }
 
+function getClientCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
+  return null;
+}
+
 type LaunchesSession = {
   userId: string;
   email?: string | null;
@@ -207,8 +215,14 @@ export function LaunchesGuard() {
           const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
           // Use a lightweight endpoint to check if session is valid
           // Try /integrations/list as it requires auth and is fast
+          const fallbackAuth = getClientCookie('auth');
+          const fallbackShowOrg = getClientCookie('showorg');
           const testRes = await fetch(`${backendUrl}/integrations/list`, {
             method: 'GET',
+            headers: {
+              ...(fallbackAuth ? { auth: fallbackAuth } : {}),
+              ...(fallbackShowOrg ? { showorg: fallbackShowOrg } : {}),
+            },
             credentials: 'include', // Include cookies
           });
 
