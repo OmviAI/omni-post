@@ -431,7 +431,14 @@ export const AddProviderComponent: FC<{
   const t = useT();
 
   // Allowed platforms - only these will be enabled
-  const allowedPlatforms = ['instagram', 'facebook', 'discord', 'telegram', 'x'];
+  const allowedPlatforms = [
+    'instagram',
+    'facebook',
+    'discord',
+    'telegram',
+    'x',
+    'youtube',
+  ];
   
   // Also allow instagram-standalone variant
   const isPlatformEnabled = (identifier: string) => {
