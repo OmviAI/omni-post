@@ -438,6 +438,9 @@ export const AddProviderComponent: FC<{
     'telegram',
     'x',
     'youtube',
+    // 'reddit',
+    'linkedin',
+    'linkedin-page',
   ];
   
   // Also allow instagram-standalone variant
