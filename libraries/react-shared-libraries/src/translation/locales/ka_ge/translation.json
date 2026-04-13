@@ -1,7 +1,7 @@
 {
     "calendar": "კალენდარი",
     "webhooks": "ვებჰუქები",
-    "webhooks_are_a_way_to_get_notified_when_something_happens_in_postiz_via_an_http_request": "ვებჰუქები საშუალებას გაძლევთ მიიღოთ შეტყობინება, როცა Postiz-ში რაიმე ხდება HTTP მოთხოვნის მეშვეობით.",
+    "webhooks_are_a_way_to_get_notified_when_something_happens_in_postiz_via_an_http_request": "ვებჰუქები საშუალებას გაძლევთ მიიღოთ შეტყობინება, როცა Prism-ში რაიმე ხდება HTTP მოთხოვნის მეშვეობით.",
     "name": "სახელი",
     "url": "ბმული",
     "edit": "რედაქტირება",

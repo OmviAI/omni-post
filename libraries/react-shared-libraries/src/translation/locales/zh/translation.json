@@ -1,7 +1,7 @@
 {
   "calendar": "日历",
   "webhooks": "Webhook（网络钩子）",
-  "webhooks_are_a_way_to_get_notified_when_something_happens_in_postiz_via_an_http_request": "Webhook 是一种通过 HTTP 请求在 Postiz 中有事件发生时获得通知的方式。",
+  "webhooks_are_a_way_to_get_notified_when_something_happens_in_postiz_via_an_http_request": "Webhook 是一种通过 HTTP 请求在 Prism 中有事件发生时获得通知的方式。",
   "name": "名称",
   "url": "URL",
   "edit": "编辑",
@@ -539,7 +539,7 @@
   "select_channels": "选择频道",
   "start_a_new_chat": "开始新聊天",
   "your_assistant": "你的助手",
-  "agent_welcome_message": "你好，我是你的 Postiz 代理 🙌🏻。\n\n我可以为多个频道安排一条或多条帖子，并生成图片和视频。\n\n你可以从左侧菜单中选择你想要使用的频道。\n\n你可以从右侧菜单中查看你之前的对话。\n\n你也可以将我用作 MCP 服务器，查看设置 >> 公共 API。",
+  "agent_welcome_message": "你好，我是你的 Prism 代理 🙌🏻。\n\n我可以为多个频道安排一条或多条帖子，并生成图片和视频。\n\n你可以从左侧菜单中选择你想要使用的频道。\n\n你可以从右侧菜单中查看你之前的对话。",
   "last_github_trending": "最新 Github 趋势",
   "next_predicted_github_trending": "下一个预测的 Github 趋势",
   "repository": "仓库",

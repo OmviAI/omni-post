@@ -1,7 +1,7 @@
 {
   "calendar": "Lịch",
   "webhooks": "Webhook",
-  "webhooks_are_a_way_to_get_notified_when_something_happens_in_postiz_via_an_http_request": "Webhook là một cách để nhận thông báo khi có sự kiện xảy ra trong Postiz thông qua một yêu cầu HTTP.",
+  "webhooks_are_a_way_to_get_notified_when_something_happens_in_postiz_via_an_http_request": "Webhook là một cách để nhận thông báo khi có sự kiện xảy ra trong Prism thông qua một yêu cầu HTTP.",
   "name": "Tên",
   "url": "URL",
   "edit": "Chỉnh sửa",
@@ -539,7 +539,7 @@
   "select_channels": "Chọn kênh",
   "start_a_new_chat": "Bắt đầu cuộc trò chuyện mới",
   "your_assistant": "Trợ lý của bạn",
-  "agent_welcome_message": "Xin chào, tôi là trợ lý Postiz của bạn 🙌🏻.\n\nTôi có thể lên lịch đăng một hoặc nhiều bài lên nhiều kênh khác nhau và tạo hình ảnh, video.\n\nBạn có thể chọn các kênh muốn sử dụng từ menu bên trái.\n\nBạn có thể xem các cuộc trò chuyện trước đó từ menu bên phải.\n\nBạn cũng có thể sử dụng tôi như một MCP Server, kiểm tra Cài đặt >> Public API",
+  "agent_welcome_message": "Xin chào, tôi là trợ lý Prism của bạn 🙌🏻.\n\nTôi có thể lên lịch đăng một hoặc nhiều bài lên nhiều kênh khác nhau và tạo hình ảnh, video.\n\nBạn có thể chọn các kênh muốn sử dụng từ menu bên trái.\n\nBạn có thể xem các cuộc trò chuyện trước đó từ menu bên phải.",
   "last_github_trending": "Xu hướng Github gần đây",
   "next_predicted_github_trending": "Dự đoán xu hướng Github tiếp theo",
   "repository": "Kho lưu trữ",
