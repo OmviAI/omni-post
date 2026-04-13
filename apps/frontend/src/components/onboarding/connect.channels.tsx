@@ -21,6 +21,11 @@ import { timer } from '@gitroom/helpers/utils/timer';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { ModalWrapperComponent } from '@gitroom/frontend/components/new-launch/modal.wrapper.component';
+import {
+  isComingSoonChannel,
+  isConnectEnabledForChannelPicker,
+  shouldShowInAddChannelGrid,
+} from '@gitroom/frontend/components/launches/helpers/channel.picker.visibility';
 export const ConnectChannels: FC = () => {
   const fetch = useFetch();
   const { isGeneral } = useVariables();
@@ -346,31 +351,56 @@ export const ConnectChannels: FC = () => {
         <div className="flex mb-[16px]">
           <div className="flex-1 flex flex-col gap-[10px]">
             <div className="grid grid-cols-3 gap-[16px]">
-              {data?.social.map((social: any) => (
-                <div
-                  key={social.identifier}
-                  onClick={getSocialLink(
-                    social.identifier,
-                    social.isExternal,
-                    social.isWeb3,
-                    social.customFields
-                  )}
-                  className="h-[96px] bg-input flex flex-col justify-center items-center gap-[10px] cursor-pointer"
-                >
-                  <div>
-                    <Image
-                      alt={social.identifier}
-                      src={`/icons/platforms/${social.identifier}.png`}
-                      className="rounded-full w-[32px] h-[32px]"
-                      width={32}
-                      height={32}
-                    />
-                  </div>
-                  <div className="text-textColor text-[10px] tracking-[1.2px] uppercase">
-                    {social.name}
-                  </div>
-                </div>
-              ))}
+              {/* Previously rendered `data?.social` with no filter (every API channel, all clickable). Tiers live in channel.picker.visibility.ts. */}
+              {data?.social
+                ?.filter((social: any) =>
+                  shouldShowInAddChannelGrid(social.identifier)
+                )
+                .map((social: any) => {
+                  const connectEnabled = isConnectEnabledForChannelPicker(
+                    social.identifier
+                  );
+                  const comingSoon = isComingSoonChannel(social.identifier);
+                  return (
+                    <div
+                      key={social.identifier}
+                      onClick={
+                        connectEnabled
+                          ? getSocialLink(
+                              social.identifier,
+                              social.isExternal,
+                              social.isWeb3,
+                              social.customFields
+                            )
+                          : undefined
+                      }
+                      className={clsx(
+                        'h-[96px] bg-input flex flex-col justify-center items-center gap-[6px]',
+                        connectEnabled
+                          ? 'cursor-pointer'
+                          : 'cursor-not-allowed opacity-50 grayscale pointer-events-none'
+                      )}
+                    >
+                      <div>
+                        <Image
+                          alt={social.identifier}
+                          src={`/icons/platforms/${social.identifier}.png`}
+                          className="rounded-full w-[32px] h-[32px]"
+                          width={32}
+                          height={32}
+                        />
+                      </div>
+                      <div className="text-textColor text-[10px] tracking-[1.2px] uppercase text-center px-[4px]">
+                        {social.name}
+                      </div>
+                      {comingSoon && (
+                        <div className="text-[9px] uppercase tracking-wide text-customColor18">
+                          {t('coming_soon', 'Coming soon')}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
             </div>
           </div>
         </div>
