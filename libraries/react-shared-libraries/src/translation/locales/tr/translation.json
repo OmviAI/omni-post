@@ -1,7 +1,7 @@
 {
   "calendar": "Takvim",
   "webhooks": "Web kancaları",
-  "webhooks_are_a_way_to_get_notified_when_something_happens_in_postiz_via_an_http_request": "Web kancaları, Postiz'de bir şey olduğunda bir HTTP isteği aracılığıyla bildirim almanın bir yoludur.",
+  "webhooks_are_a_way_to_get_notified_when_something_happens_in_postiz_via_an_http_request": "Web kancaları, Prism'de bir şey olduğunda bir HTTP isteği aracılığıyla bildirim almanın bir yoludur.",
   "name": "İsim",
   "url": "URL",
   "edit": "Düzenle",
@@ -539,7 +539,7 @@
   "select_channels": "Kanalları Seç",
   "start_a_new_chat": "Yeni bir sohbet başlat",
   "your_assistant": "Asistanınız",
-  "agent_welcome_message": "Merhaba, ben Postiz ajanınızım 🙌🏻.\n\nBir veya birden fazla gönderiyi birden fazla kanala zamanlayabilir, resim ve video oluşturabilirim.\n\nKullanmak istediğiniz kanalları sol menüden seçebilirsiniz.\n\nÖnceki konuşmalarınızı sağ menüden görebilirsiniz.\n\nAyrıca beni bir MCP Sunucusu olarak da kullanabilirsiniz, Ayarlar >> Genel API bölümünü kontrol edin.",
+  "agent_welcome_message": "Merhaba, ben Prism ajanınızım 🙌🏻.\n\nBir veya birden fazla gönderiyi birden fazla kanala zamanlayabilir, resim ve video oluşturabilirim.\n\nKullanmak istediğiniz kanalları sol menüden seçebilirsiniz.\n\nÖnceki konuşmalarınızı sağ menüden görebilirsiniz.",
   "last_github_trending": "Son Github Trendleri",
   "next_predicted_github_trending": "Sonraki Tahmini Github Trendleri",
   "repository": "Depo",

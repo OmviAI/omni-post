@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { useUser } from '../layout/user.context';
+import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { Button } from '@gitroom/react/form/button';
 import copy from 'copy-to-clipboard';
 import { useToaster } from '@gitroom/react/toaster/toaster';
@@ -11,12 +11,13 @@ export const PublicComponent = () => {
   const user = useUser();
   const { backendUrl, frontEndUrl } = useVariables();
   const toaster = useToaster();
-  const [reveal, setReveal] = useState(false);
+  // Public API key block (below) — uncomment together with the JSX block marked below.
+  // const [reveal, setReveal] = useState(false);
   const [reveal2, setReveal2] = useState(false);
-  const copyToClipboard = useCallback(() => {
-    toaster.show('API Key copied to clipboard', 'success');
-    copy(user?.publicApi!);
-  }, [user]);
+  // const copyToClipboard = useCallback(() => {
+  //   toaster.show('API Key copied to clipboard', 'success');
+  //   copy(user?.publicApi!);
+  // }, [user, toaster]);
   const copyToClipboard2 = useCallback(() => {
     toaster.show('MCP copied to clipboard', 'success');
     copy(`${backendUrl}/mcp/` + user?.publicApi);
@@ -29,6 +30,7 @@ export const PublicComponent = () => {
   }
   return (
     <div className="flex flex-col gap-[20px]">
+      {/*
       <div className="flex flex-col">
         <h3 className="text-[20px]">{t('public_api', 'Public API')}</h3>
         <div className="text-customColor18 mt-[4px]">
@@ -82,6 +84,7 @@ export const PublicComponent = () => {
           </div>
         </div>
       </div>
+      */}
 
       <div className="flex flex-col">
         <h3 className="text-[20px]">{t('mcp', 'MCP')}</h3>

@@ -18,6 +18,11 @@ import { web3List } from '@gitroom/frontend/components/launches/web3/web3.list';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { ModalWrapperComponent } from '@gitroom/frontend/components/new-launch/modal.wrapper.component';
 import clsx from 'clsx';
+import {
+  isComingSoonChannel,
+  isConnectEnabledForChannelPicker,
+  shouldShowInAddChannelGrid,
+} from '@gitroom/frontend/components/launches/helpers/channel.picker.visibility';
 const resolver = classValidatorResolver(ApiKeyDto);
 export const useAddProvider = (update?: () => void) => {
   const modal = useModals();
@@ -430,39 +435,41 @@ export const AddProviderComponent: FC<{
 
   const t = useT();
 
-  // Allowed platforms - only these will be enabled
-  const allowedPlatforms = [
-    'instagram',
-    'facebook',
-    'discord',
-    'telegram',
-    'x',
-    'youtube',
-    // 'reddit',
-    'linkedin',
-    'linkedin-page',
-  ];
-  
-  // Also allow instagram-standalone variant
-  const isPlatformEnabled = (identifier: string) => {
-    return allowedPlatforms.includes(identifier) || identifier === 'instagram-standalone';
-  };
+  // Legacy allow-list (replaced by channel.picker.visibility). Kept commented per product request.
+  // const allowedPlatforms = [
+  //   'instagram', 'facebook', 'discord', 'telegram', 'x', 'youtube',
+  //   // 'reddit',
+  //   'linkedin', 'linkedin-page',
+  // ];
+  // const isPlatformEnabled = (identifier: string) => {
+  //   return allowedPlatforms.includes(identifier) || identifier === 'instagram-standalone';
+  // };
 
   return (
     <div className="w-full flex flex-col gap-[20px] rounded-[4px] relative">
       <div className="flex flex-col">
         <div className="grid grid-cols-5 gap-[10px] justify-items-center justify-center">
-          {social.map((item) => {
-            const isEnabled = isPlatformEnabled(item.identifier);
+          {/* Previously: `social.map` with no filter (every channel from API). Tiers: channel.picker.visibility.ts */}
+          {social
+            .filter((item) => shouldShowInAddChannelGrid(item.identifier))
+            .map((item) => {
+            const connectEnabled = isConnectEnabledForChannelPicker(
+              item.identifier
+            );
+            const comingSoon = isComingSoonChannel(item.identifier);
             return (
             <div
               key={item.identifier}
-              onClick={isEnabled ? getSocialLink(
-                item.identifier,
-                item.isExternal,
-                item.isWeb3,
-                item.customFields
-              ) : undefined}
+              onClick={
+                connectEnabled
+                  ? getSocialLink(
+                      item.identifier,
+                      item.isExternal,
+                      item.isWeb3,
+                      item.customFields
+                    )
+                  : undefined
+              }
               {...(!!item.toolTip
                 ? {
                     'data-tooltip-id': 'tooltip',
@@ -470,8 +477,11 @@ export const AddProviderComponent: FC<{
                   }
                 : {})}
               className={clsx(
-                'w-full h-[100px] text-[14px] p-[10px] rounded-[8px] bg-newTableHeader text-textColor relative justify-center items-center flex flex-col gap-[10px]',
-                isEnabled ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
+                'w-full h-[100px] text-[14px] p-[10px] rounded-[8px] bg-newTableHeader text-textColor relative justify-center items-center flex flex-col gap-[6px]',
+                connectEnabled
+                  ? 'cursor-pointer'
+                  : 'cursor-not-allowed opacity-50 grayscale',
+                comingSoon && 'pointer-events-none'
               )}
             >
               <div>
@@ -484,8 +494,13 @@ export const AddProviderComponent: FC<{
                   />
                 )}
               </div>
-              <div className="whitespace-pre-wrap text-center">
+              <div className="whitespace-pre-wrap text-center leading-tight">
                 {item.name}
+                {comingSoon && (
+                  <div className="mt-[2px] text-[10px] uppercase tracking-wide text-customColor18">
+                    {t('coming_soon', 'Coming soon')}
+                  </div>
+                )}
                 {!!item.toolTip && (
                   <svg
                     width="15"
