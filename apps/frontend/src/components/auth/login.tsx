@@ -39,46 +39,63 @@ export function Login() {
   const fetchData = useFetch();
   const onSubmit: SubmitHandler<Inputs> = async (data) => {
     setLoading(true);
-    const login = await fetchData('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({
-        ...data,
-        provider: 'LOCAL',
-      }),
-    });
-    if (login.status === 400) {
-      form.setError('email', {
-        message: await login.text(),
+    try {
+      const login = await fetchData('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({
+          ...data,
+          provider: 'LOCAL',
+          providerToken: data.providerToken ?? '',
+        }),
       });
-      setLoading(false);
-    } else if (login.status === 200) {
-      // Check for reload or onboarding header, otherwise redirect to default page
-      const reloadHeader = login.headers.get('reload');
-      const onboardingHeader = login.headers.get('onboarding');
-      
-      if (reloadHeader || onboardingHeader) {
-        // Let the afterRequest handler in layout.context handle the redirect
-        window.location.reload();
-      } else {
-        // Fallback: redirect to launches page (or analytics if not general)
-        window.location.href = isGeneral ? '/launches' : '/analytics';
+      if (login.status === 400) {
+        form.setError('email', {
+          message: await login.text(),
+        });
+        return;
       }
+      if (login.status === 200) {
+        const reloadHeader = login.headers.get('reload');
+        const onboardingHeader = login.headers.get('onboarding');
+
+        if (reloadHeader || onboardingHeader) {
+          window.location.reload();
+          return;
+        }
+        window.location.href = isGeneral ? '/launches' : '/analytics';
+        return;
+      }
+      const detail = await login.text().catch(() => '');
+      form.setError('email', {
+        message:
+          detail ||
+          `Sign in failed (${login.status}). Check the API URL and that the backend is running.`,
+      });
+    } catch (e: unknown) {
+      const message =
+        e instanceof Error ? e.message : 'Network error — could not reach the server.';
+      form.setError('email', { message });
+    } finally {
+      setLoading(false);
     }
   };
   return (
     <FormProvider {...form}>
       <form className="flex-1 flex" onSubmit={form.handleSubmit(onSubmit)}>
         <div className="flex flex-col flex-1">
+          {/* Registered so class-validator receives provider / providerToken (defaults alone are not always submitted). */}
+          <input type="hidden" {...form.register('provider')} />
+          <input type="hidden" {...form.register('providerToken')} />
           <div>
             <h1 className="text-[40px] font-[500] -tracking-[0.8px] text-start cursor-pointer">
               {t('sign_in', 'Sign In')}
             </h1>
           </div>
-          <div className="text-[14px] mt-[32px] mb-[12px]">
+          {/* <div className="text-[14px] mt-[32px] mb-[12px]">
             {t('continue_with', 'Continue With')}
-          </div>
+          </div> */}
           <div className="flex flex-col">
-            {isGeneral && genericOauth ? (
+            {/* {isGeneral && genericOauth ? (
               <OauthProvider />
             ) : !isGeneral ? (
               <GithubProvider />
@@ -88,29 +105,29 @@ export function Login() {
                 {!!neynarClientId && <FarcasterProvider />}
                 {billingEnabled && <WalletProvider />}
               </div>
-            )}
-            <div className="h-[20px] mb-[24px] mt-[24px] relative">
+            )} */}
+            {/* <div className="h-[20px] mb-[24px] mt-[24px] relative">
               <div className="absolute w-full h-[1px] bg-fifth top-[50%] -translate-y-[50%]" />
               <div
                 className={`absolute z-[1] justify-center items-center w-full start-0 -top-[4px] flex`}
               >
                 <div className="px-[16px]">{t('or', 'or')}</div>
               </div>
-            </div>
+            </div> */}
             <div className="flex flex-col gap-[12px]">
               <div className="text-textColor">
                 <Input
                   label="Email"
                   translationKey="label_email"
-                  {...form.register('email')}
+                  name="email"
                   type="email"
                   placeholder={t('email_address', 'Email Address')}
                 />
                 <Input
                   label="Password"
                   translationKey="label_password"
-                  {...form.register('password')}
-                  autoComplete="off"
+                  name="password"
+                  autoComplete="current-password"
                   type="password"
                   placeholder={t('label_password', 'Password')}
                 />
