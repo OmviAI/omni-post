@@ -1,7 +1,7 @@
 {
   "calendar": "Calendário",
   "webhooks": "Webhooks",
-  "webhooks_are_a_way_to_get_notified_when_something_happens_in_postiz_via_an_http_request": "Webhooks são uma forma de ser notificado quando algo acontece no Postiz via uma solicitação HTTP.",
+  "webhooks_are_a_way_to_get_notified_when_something_happens_in_postiz_via_an_http_request": "Webhooks são uma forma de ser notificado quando algo acontece no Prism via uma solicitação HTTP.",
   "name": "Nome",
   "url": "URL",
   "edit": "Editar",
@@ -539,7 +539,7 @@
   "select_channels": "Selecionar canais",
   "start_a_new_chat": "Iniciar um novo chat",
   "your_assistant": "Seu Assistente",
-  "agent_welcome_message": "Olá, sou seu agente Postiz 🙌🏻.\n\nPosso agendar uma publicação ou várias publicações para múltiplos canais e gerar imagens e vídeos.\n\nVocê pode selecionar os canais que deseja usar no menu à esquerda.\n\nVocê pode ver suas conversas anteriores no menu à direita.\n\nVocê também pode me usar como um Servidor MCP, confira Configurações >> API Pública",
+  "agent_welcome_message": "Olá, sou seu agente Prism 🙌🏻.\n\nPosso agendar uma publicação ou várias publicações para múltiplos canais e gerar imagens e vídeos.\n\nVocê pode selecionar os canais que deseja usar no menu à esquerda.\n\nVocê pode ver suas conversas anteriores no menu à direita.",
   "last_github_trending": "Últimas tendências do Github",
   "next_predicted_github_trending": "Próxima tendência prevista do GitHub",
   "repository": "Repositório",

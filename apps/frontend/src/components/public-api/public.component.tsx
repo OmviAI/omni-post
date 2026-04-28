@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { useUser } from '../layout/user.context';
+import { useUser } from '@gitroom/frontend/components/layout/user.context';
 import { Button } from '@gitroom/react/form/button';
 import copy from 'copy-to-clipboard';
 import { useToaster } from '@gitroom/react/toaster/toaster';
@@ -11,12 +11,13 @@ export const PublicComponent = () => {
   const user = useUser();
   const { backendUrl, frontEndUrl } = useVariables();
   const toaster = useToaster();
-  const [reveal, setReveal] = useState(false);
+  // Public API key block (below) — uncomment together with the JSX block marked below.
+  // const [reveal, setReveal] = useState(false);
   const [reveal2, setReveal2] = useState(false);
-  const copyToClipboard = useCallback(() => {
-    toaster.show('API Key copied to clipboard', 'success');
-    copy(user?.publicApi!);
-  }, [user]);
+  // const copyToClipboard = useCallback(() => {
+  //   toaster.show('API Key copied to clipboard', 'success');
+  //   copy(user?.publicApi!);
+  // }, [user, toaster]);
   const copyToClipboard2 = useCallback(() => {
     toaster.show('MCP copied to clipboard', 'success');
     copy(`${backendUrl}/mcp/` + user?.publicApi);
@@ -29,12 +30,13 @@ export const PublicComponent = () => {
   }
   return (
     <div className="flex flex-col gap-[20px]">
+      {/*
       <div className="flex flex-col">
         <h3 className="text-[20px]">{t('public_api', 'Public API')}</h3>
         <div className="text-customColor18 mt-[4px]">
           {t(
             'use_postiz_api_to_integrate_with_your_tools',
-            'Use Postiz API to integrate with your tools.'
+            'Use Prism API to integrate with your tools.'
           )}
           <br />
           <a
@@ -53,7 +55,7 @@ export const PublicComponent = () => {
             target="_blank"
           >
             <br />
-            {t('check_n8n', 'Check out our N8N custom node for Postiz.')}
+            {t('check_n8n', 'Check out our N8N custom node for Prism.')}
           </a>
         </div>
         <div className="flex flex-col">
@@ -82,13 +84,14 @@ export const PublicComponent = () => {
           </div>
         </div>
       </div>
+      */}
 
       <div className="flex flex-col">
         <h3 className="text-[20px]">{t('mcp', 'MCP')}</h3>
         <div className="text-customColor18 mt-[4px]">
           {t(
             'connect_your_mcp_client_to_postiz_to_schedule_your_posts_faster',
-            'Connect Postiz MCP server to your client (Http streaming) to schedule your posts faster.'
+            'Connect Prism MCP server to your client (Http streaming) to schedule your posts faster.'
           )}
         </div>
         <div className="my-[16px] mt-[16px] bg-sixth border-fifth items-center border rounded-[4px] p-[24px] flex gap-[24px]">
@@ -119,13 +122,13 @@ export const PublicComponent = () => {
       </div>
 
       <div className="flex flex-col">
-        <h3 className="text-[20px]">Building your Postiz payload</h3>
+        <h3 className="text-[20px]">Building your Prism payload</h3>
         <div className="text-customColor18 mt-[4px] whitespace-pre-line">
           Sending a POST request to <strong className="text-textColor">/posts</strong> might feel a bit overwhelming as many
           platforms have different requirements.{'\n'}
-          We have created an easy way to build your Postiz payload to schedule
+          We have created an easy way to build your Prism payload to schedule
           posts. {'\n'}
-          You can use the Postiz wizard, and schedule a post with our UI, after
+          You can use the Prism wizard, and schedule a post with our UI, after
           you added all your text and settings, the wizard will generate the
           payload for you.{'\n'}
         </div>
