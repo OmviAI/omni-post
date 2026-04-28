@@ -6,7 +6,7 @@ import {
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { SocialAbstract } from '@gitroom/nestjs-libraries/integrations/social.abstract';
-import { Integration } from '@prisma/client';
+import { PostIntegration } from '@prisma/client';
 import { DiscordDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/discord.dto';
 import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
 
@@ -210,7 +210,7 @@ export class DiscordProvider extends SocialAbstract implements SocialProvider {
     lastCommentId: string | undefined,
     accessToken: string,
     postDetails: PostDetails[],
-    integration: Integration
+    integration: PostIntegration
   ): Promise<PostResponse[]> {
     const [commentPost] = postDetails;
     const channel = commentPost.settings.channel;
@@ -316,7 +316,7 @@ export class DiscordProvider extends SocialAbstract implements SocialProvider {
     token: string,
     data: { query: string },
     id: string,
-    integration: Integration
+    integration: PostIntegration
   ) {
     const allRoles = await (
       await fetch(`https://discord.com/api/guilds/${id}/roles`, {

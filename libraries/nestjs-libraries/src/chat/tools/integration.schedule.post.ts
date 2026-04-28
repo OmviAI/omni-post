@@ -8,7 +8,7 @@ import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/po
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { AllProvidersSettings } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/all.providers.settings';
 import { validate } from 'class-validator';
-import { Integration } from '@prisma/client';
+import { PostIntegration } from '@prisma/client';
 import { checkAuth } from '@gitroom/nestjs-libraries/chat/auth.context';
 import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
 import { weightedLength } from '@gitroom/helpers/utils/count.length';
@@ -123,7 +123,7 @@ If the tools return errors, you would need to rerun it with the right parameters
         ).id;
         const finalOutput = [];
 
-        const integrations = {} as Record<string, Integration>;
+        const integrations = {} as Record<string, PostIntegration>;
         for (const platform of context.socialPost) {
           integrations[platform.integrationId] =
             await this._integrationService.getIntegrationById(

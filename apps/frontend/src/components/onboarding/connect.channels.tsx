@@ -15,7 +15,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import { useToaster } from '@gitroom/react/toaster/toaster';
-import { Integration } from '@prisma/client';
+import { Integration, PostIntegration } from '@prisma/client';
 import { web3List } from '@gitroom/frontend/components/launches/web3/web3.list';
 import { timer } from '@gitroom/helpers/utils/timer';
 import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
@@ -69,7 +69,7 @@ export const ConnectChannels: FC = () => {
   };
   const refreshChannel = useCallback(
     (
-        integration: Integration & {
+        integration: PostIntegration & {
           identifier: string;
         }
       ) =>

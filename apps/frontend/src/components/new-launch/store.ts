@@ -7,6 +7,7 @@ import { createRef, RefObject } from 'react';
 import { arrayMoveImmutable } from 'array-move';
 import { PostComment } from '@gitroom/frontend/components/new-launch/providers/high.order.provider';
 import { newDayjs } from '@gitroom/frontend/components/layout/set.timezone';
+import { PostIntegration } from '@prisma/client';
 
 interface Values {
   id: string;
@@ -297,7 +298,7 @@ export const useLaunchStore = create<StoreState>()((set) => ({
         internal: [
           ...state.internal,
           {
-            integration: integration.integration,
+            integration: integration!.integration,
             integrationValue: state.global.slice(0).map((p) => p),
           },
         ],

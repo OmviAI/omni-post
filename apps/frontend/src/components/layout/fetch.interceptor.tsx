@@ -2,6 +2,8 @@
 
 import { useEffect } from 'react';
 
+const LAUNCHES_SESSION_KEY = 'launches_clerk_session';
+
 /**
  * Global fetch interceptor to add auth headers for CopilotKit requests
  * This is necessary because CopilotKit doesn't support custom fetch prop
@@ -24,8 +26,25 @@ export function FetchInterceptor(): null {
 
     // Override fetch
     window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
-      
+      const url =
+        typeof input === 'string'
+          ? input
+          : input instanceof URL
+          ? input.toString()
+          : input.url;
+
+      // Try to read Clerk token from launches session (set by LaunchesGuard)
+      let launchesToken: string | null = null;
+      try {
+        const raw = window.localStorage.getItem(LAUNCHES_SESSION_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw) as { token?: string };
+          launchesToken = parsed.token || null;
+        }
+      } catch {
+        launchesToken = null;
+      }
+
       // Intercept requests to copilot endpoints - add auth headers
       if (url.includes('/copilot/')) {
         const authCookie = getCookie('auth');
@@ -33,7 +52,7 @@ export function FetchInterceptor(): null {
         
         // Create new headers
         const headers = new Headers(init?.headers);
-        
+
         // Add auth headers if cookies exist and headers don't already have them
         if (authCookie && !headers.has('auth')) {
           headers.set('auth', authCookie);
@@ -41,14 +60,14 @@ export function FetchInterceptor(): null {
         if (showorgCookie && !headers.has('showorg')) {
           headers.set('showorg', showorgCookie);
         }
-        
+
         // Merge with existing init options
         const newInit: RequestInit = {
           ...init,
           credentials: 'include',
           headers,
         };
-        
+
         console.log(`[FetchInterceptor] Intercepted ${url}, added auth headers: ${!!authCookie}, showorg: ${!!showorgCookie}`);
         
         return originalFetch(input, newInit);
@@ -64,7 +83,7 @@ export function FetchInterceptor(): null {
           // But ensure credentials are not included (R2 doesn't need them for presigned URLs)
           mode: 'cors',
         };
-        
+
         console.log(`[FetchInterceptor] Intercepted R2 upload: ${url.substring(0, 100)}...`);
         
         try {
@@ -79,8 +98,13 @@ export function FetchInterceptor(): null {
           throw error;
         }
       }
-      
-      // For all other requests, use original fetch
+
+      // Note: We no longer use Clerk tokens from localStorage.
+      // After the initial token exchange, the app uses JWT cookies for authentication.
+      // The backend middleware will read the JWT from the 'auth' cookie automatically.
+      // Cookies are sent automatically with credentials: 'include' (which customFetch sets).
+
+      // If no Clerk token, fall back to original fetch
       return originalFetch(input, init);
     };
 

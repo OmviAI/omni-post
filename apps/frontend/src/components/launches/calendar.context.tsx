@@ -14,7 +14,7 @@ import {
 import dayjs from 'dayjs';
 import useSWR from 'swr';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
-import { Post, Integration, Tags } from '@prisma/client';
+import { Post, Integration, PostIntegration, Tags } from '@prisma/client';
 import { useSearchParams } from 'next/navigation';
 import isoWeek from 'dayjs/plugin/isoWeek';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
@@ -42,7 +42,7 @@ export const CalendarContext = createContext({
   trendings: [] as string[],
   posts: [] as Array<
     Post & {
-      integration: Integration;
+      integration: PostIntegration;
       tags: {
         tag: Tags;
       }[];
@@ -153,16 +153,32 @@ export const CalendarWeekProvider: FC<{
   }, [filters]);
 
   const loadData = useCallback(async () => {
-    const modifiedParams = new URLSearchParams({
-      display: filters.display,
-      customer: filters?.customer?.toString() || '',
-      startDate: newDayjs(filters.startDate).startOf('day').utc().format(),
-      endDate: newDayjs(filters.endDate).endOf('day').utc().format(),
-    }).toString();
+    try {
+      const modifiedParams = new URLSearchParams({
+        display: filters.display,
+        customer: filters?.customer?.toString() || '',
+        startDate: newDayjs(filters.startDate).startOf('day').utc().format(),
+        endDate: newDayjs(filters.endDate).endOf('day').utc().format(),
+      }).toString();
 
-    const data = (await fetch(`/posts?${modifiedParams}`)).json();
-    return data;
-  }, [filters, params]);
+      console.log(`[CalendarContext] Loading posts with params: ${modifiedParams}`);
+      const response = await fetch(`/posts?${modifiedParams}`);
+      
+      if (!response.ok) {
+        console.error(`[CalendarContext] Failed to load posts: ${response.status} ${response.statusText}`);
+        const errorText = await response.text().catch(() => '');
+        console.error(`[CalendarContext] Error response: ${errorText}`);
+        return { posts: [], comments: [] };
+      }
+
+      const data = await response.json();
+      console.log(`[CalendarContext] Successfully loaded ${data.posts?.length || 0} posts`);
+      return data;
+    } catch (error) {
+      console.error('[CalendarContext] Error loading posts:', error);
+      return { posts: [], comments: [] };
+    }
+  }, [filters, fetch]);
 
   const swr = useSWR(`/posts-${params}`, loadData, {
     refreshInterval: 3600000,
@@ -217,11 +233,23 @@ export const CalendarWeekProvider: FC<{
     [filters, swr.mutate]
   );
 
-  const { isLoading } = swr;
+  const { isLoading, error } = swr;
   const { posts, comments } = swr?.data || {
     posts: [],
     comments: [],
   };
+
+  // Log loading state and errors
+  useEffect(() => {
+    if (error) {
+      console.error('[CalendarContext] SWR error:', error);
+    }
+    if (isLoading) {
+      console.log('[CalendarContext] Loading posts...');
+    } else {
+      console.log(`[CalendarContext] Loaded ${posts.length} posts, isLoading: ${isLoading}`);
+    }
+  }, [isLoading, error, posts.length]);
 
   const changeDate = useCallback(
     (id: string, date: dayjs.Dayjs) => {

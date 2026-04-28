@@ -11,7 +11,7 @@ import sharp from 'sharp';
 import { readOrFetch } from '@gitroom/helpers/utils/read.or.fetch';
 import { SocialAbstract } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { Plug } from '@gitroom/helpers/decorators/plug.decorator';
-import { Integration } from '@prisma/client';
+import { PostIntegration } from '@prisma/client';
 import { timer } from '@gitroom/helpers/utils/timer';
 import { PostPlug } from '@gitroom/helpers/decorators/post.plug';
 import dayjs from 'dayjs';
@@ -104,7 +104,7 @@ export class XProvider extends SocialAbstract implements SocialProvider {
     ],
   })
   async autoRepostPost(
-    integration: Integration,
+    integration: PostIntegration,
     id: string,
     fields: { likesAmount: string }
   ) {
@@ -138,8 +138,8 @@ export class XProvider extends SocialAbstract implements SocialProvider {
     fields: [],
   })
   async repostPostUsers(
-    integration: Integration,
-    originalIntegration: Integration,
+    integration: PostIntegration,
+    originalIntegration: PostIntegration,
     postId: string,
     information: any
   ) {
@@ -188,7 +188,7 @@ export class XProvider extends SocialAbstract implements SocialProvider {
     ],
   })
   async autoPlugPost(
-    integration: Integration,
+    integration: PostIntegration,
     id: string,
     fields: { likesAmount: string; post: string }
   ) {
@@ -458,7 +458,7 @@ export class XProvider extends SocialAbstract implements SocialProvider {
       active_thread_finisher: boolean;
       thread_finisher: string;
     }>[],
-    integration: Integration
+    integration: PostIntegration
   ): Promise<PostResponse[]> {
     const client = await this.getClient(accessToken);
     const {

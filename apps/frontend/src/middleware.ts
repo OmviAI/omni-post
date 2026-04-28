@@ -80,22 +80,39 @@ export async function middleware(request: NextRequest) {
   }
   const org = nextUrl.searchParams.get('org');
   const url = new URL(nextUrl).search;
-  if (nextUrl.href.indexOf('/auth') === -1 && !authCookie) {
-    const providers = ['google', 'settings'];
-    const findIndex = providers.find((p) => nextUrl.href.indexOf(p) > -1);
-    const additional = !findIndex
-      ? ''
-      : (url.indexOf('?') > -1 ? '&' : '?') +
-        `provider=${(findIndex === 'settings'
-          ? process.env.POSTIZ_GENERIC_OAUTH
-            ? 'generic'
-            : 'github'
-          : findIndex
-        ).toUpperCase()}`;
-    return NextResponse.redirect(
-      new URL(`/auth${url}${additional}`, nextUrl.href)
-    );
+
+  // If user is trying to access /launches, always let the client-side guard handle it.
+  // The LaunchesGuard will check:
+  // 1. First: URL query params (if present, verify and store in localStorage)
+  // 2. Second: localStorage (if no params, read from localStorage)
+  // 3. If neither exists, it will handle the redirect to sign-in
+  // We don't redirect here because localStorage is only accessible on the client.
+  if (nextUrl.pathname.startsWith('/launches')) {
+    // Always allow /launches to reach the client-side guard
+    // The guard will check localStorage and redirect if needed
+    return NextResponse.next({
+      headers,
+    });
   }
+
+  // Legacy behaviour: for unauthenticated users, redirect everything to /auth.
+  // This has been replaced by Clerk-based sign-in, but kept here for reference.
+  // if (nextUrl.href.indexOf('/auth') === -1 && !authCookie) {
+  //   const providers = ['google', 'settings'];
+  //   const findIndex = providers.find((p) => nextUrl.href.indexOf(p) > -1);
+  //   const additional = !findIndex
+  //     ? ''
+  //     : (url.indexOf('?') > -1 ? '&' : '?') +
+  //       `provider=${(findIndex === 'settings'
+  //         ? process.env.POSTIZ_GENERIC_OAUTH
+  //           ? 'generic'
+  //           : 'github'
+  //         : findIndex
+  //       ).toUpperCase()}`;
+  //   return NextResponse.redirect(
+  //     new URL(`/auth${url}${additional}`, nextUrl.href)
+  //   );
+  // }
 
   // If the url is /auth and the cookie exists, redirect to /
   if (nextUrl.href.indexOf('/auth') > -1 && authCookie) {

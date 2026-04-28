@@ -21,7 +21,7 @@ import {
 } from '@gitroom/frontend/components/launches/calendar.context';
 import { BotPicture } from '@gitroom/frontend/components/launches/bot.picture';
 import { CustomerModal } from '@gitroom/frontend/components/launches/customer.modal';
-import { Integration } from '@prisma/client';
+import { Integration, PostIntegration } from '@prisma/client';
 import { SettingsModal } from '@gitroom/frontend/components/launches/settings.modal';
 import { CustomVariables } from '@gitroom/frontend/components/launches/add.provider.component';
 import { useRouter } from 'next/navigation';
@@ -37,7 +37,7 @@ export const Menu: FC<{
   canChangeProfilePicture: boolean;
   canChangeNickName: boolean;
   refreshChannel: (
-    integration: Integration & {
+    integration: PostIntegration & {
       identifier: string;
     }
   ) => () => void;
@@ -179,7 +179,7 @@ export const Menu: FC<{
   }, [integrations, t]);
 
   const copyChannelId = useCallback(
-    (integration: Integrations) => async () => {
+    (integration: PostIntegration) => async () => {
       setShow(false);
       const channelId = integration.id;
       copy(channelId);
@@ -189,7 +189,7 @@ export const Menu: FC<{
   );
 
   const createPost = useCallback(
-    (integration: Integrations) => async () => {
+    (integration: PostIntegration) => async () => {
       setShow(false);
 
       const { date } = await (

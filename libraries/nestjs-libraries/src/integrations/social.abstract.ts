@@ -1,5 +1,5 @@
 import { timer } from '@gitroom/helpers/utils/timer';
-import { Integration } from '@prisma/client';
+import { PostIntegration } from '@prisma/client';
 import { ApplicationFailure } from '@temporalio/activity';
 
 export class RefreshToken extends ApplicationFailure {
@@ -46,7 +46,7 @@ export abstract class SocialAbstract {
     token: string,
     d: { query: string },
     id: string,
-    integration: Integration
+    integration: PostIntegration
   ): Promise<
     | { id: string; label: string; image: string; doNotCache?: boolean }[]
     | { none: true }

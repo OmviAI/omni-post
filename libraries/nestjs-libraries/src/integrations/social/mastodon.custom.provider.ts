@@ -89,7 +89,7 @@ export class MastodonCustomProvider extends MastodonProvider {
     lastCommentId: string | undefined,
     accessToken: string,
     postDetails: PostDetails[],
-    integration: Integration
+    integration: PostIntegration
   ): Promise<PostResponse[]> {
     return this.dynamicComment(
       id,

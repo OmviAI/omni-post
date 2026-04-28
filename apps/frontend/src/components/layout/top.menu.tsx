@@ -273,10 +273,9 @@ export const TopMenu: FC = () => {
     <>
       <div className="flex flex-1 flex-col gap-[16px] blurMe">
         {
-          // @ts-ignore
-          user?.orgId &&
-            // @ts-ignore
-            (user.tier !== 'FREE' || !isGeneral || !billingEnabled) &&
+          // Show menu items if user exists
+          // Individual menu items will filter based on billing, roles, etc.
+          user &&
             firstMenu
               .filter((f) => {
                 if (f.hide) {

@@ -61,6 +61,13 @@ export class OrganizationService {
     return this._organizationRepository.updateApiKey(orgId);
   }
 
+  /**
+   * Create a default org for an existing user (Clerk flow) when they have no org membership yet.
+   */
+  createDefaultOrgForUser(userId: string, name: string) {
+    return this._organizationRepository.createDefaultOrgForUser(userId, name);
+  }
+
   getTeam(orgId: string) {
     return this._organizationRepository.getTeam(orgId);
   }

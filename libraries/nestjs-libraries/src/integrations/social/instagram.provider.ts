@@ -10,7 +10,7 @@ import { timer } from '@gitroom/helpers/utils/timer';
 import dayjs from 'dayjs';
 import { SocialAbstract } from '@gitroom/nestjs-libraries/integrations/social.abstract';
 import { InstagramDto } from '@gitroom/nestjs-libraries/dtos/posts/providers-settings/instagram.dto';
-import { Integration } from '@prisma/client';
+import { PostIntegration } from '@prisma/client';
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
 
 @Rules(
@@ -449,7 +449,7 @@ export class InstagramProvider
     id: string,
     accessToken: string,
     postDetails: PostDetails<InstagramDto>[],
-    integration: Integration,
+    integration: PostIntegration,
     type = 'graph.facebook.com'
   ): Promise<PostResponse[]> {
     const [firstPost] = postDetails;
@@ -604,7 +604,7 @@ export class InstagramProvider
     lastCommentId: string | undefined,
     accessToken: string,
     postDetails: PostDetails<InstagramDto>[],
-    integration: Integration,
+    integration: PostIntegration,
     type = 'graph.facebook.com'
   ): Promise<PostResponse[]> {
     const [commentPost] = postDetails;

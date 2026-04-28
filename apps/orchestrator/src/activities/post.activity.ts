@@ -9,7 +9,7 @@ import {
   NotificationService,
   NotificationType,
 } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
-import { Integration, Post, State } from '@prisma/client';
+import { Post, PostState, PostIntegration } from '@prisma/client';
 import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
 import { IntegrationManager } from '@gitroom/nestjs-libraries/integrations/integration.manager';
 import { AuthTokenDetails } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
@@ -88,7 +88,7 @@ export class PostActivity {
   }
 
   @ActivityMethod()
-  async isCommentable(integration: Integration) {
+  async isCommentable(integration: PostIntegration) {
     const getIntegration = this._integrationManager.getSocialIntegration(
       integration.providerIdentifier
     );
@@ -100,7 +100,7 @@ export class PostActivity {
   async postComment(
     postId: string,
     lastPostId: string | undefined,
-    integration: Integration,
+    integration: PostIntegration,
     posts: Post[]
   ) {
     const getIntegration = this._integrationManager.getSocialIntegration(
@@ -141,7 +141,7 @@ export class PostActivity {
   }
 
   @ActivityMethod()
-  async postSocial(integration: Integration, posts: Post[]) {
+  async postSocial(integration: PostIntegration, posts: Post[]) {
     console.log(`[Post Activity] postSocial called - Provider: ${integration.providerIdentifier}, IntegrationId: ${integration.id}, IntegrationName: ${integration.name}, PostsCount: ${posts.length}, HasToken: ${!!integration.token}, TokenLength: ${integration.token?.length || 0}`);
     
     try {
@@ -229,7 +229,7 @@ export class PostActivity {
   }
 
   @ActivityMethod()
-  async globalPlugs(integration: Integration) {
+  async globalPlugs(integration: PostIntegration) {
     return this._postService.checkPlugs(
       integration.organizationId,
       integration.providerIdentifier,
@@ -238,12 +238,12 @@ export class PostActivity {
   }
 
   @ActivityMethod()
-  async changeState(id: string, state: State, err?: any, body?: any) {
+  async changeState(id: string, state: PostState, err?: any, body?: any) {
     return this._postService.changeState(id, state, err, body);
   }
 
   @ActivityMethod()
-  async internalPlugs(integration: Integration, settings: any) {
+  async internalPlugs(integration: PostIntegration, settings: any) {
     return this._postService.checkInternalPlug(
       integration,
       integration.organizationId,
@@ -306,7 +306,7 @@ export class PostActivity {
 
   @ActivityMethod()
   async refreshToken(
-    integration: Integration
+    integration: PostIntegration
   ): Promise<false | AuthTokenDetails> {
     const getIntegration = this._integrationManager.getSocialIntegration(
       integration.providerIdentifier

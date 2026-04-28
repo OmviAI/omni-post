@@ -19,7 +19,7 @@ import {
   BlobRef,
 } from '@atproto/api';
 import dayjs from 'dayjs';
-import { Integration } from '@prisma/client';
+import { PostIntegration } from '@prisma/client';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import sharp from 'sharp';
 import { Plug } from '@gitroom/helpers/decorators/plug.decorator';
@@ -239,7 +239,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
     }
   }
 
-  private async getAgent(integration: Integration) {
+  private async getAgent(integration: PostIntegration) {
     const body = JSON.parse(
       AuthService.fixedDecryption(integration.customInstanceDetails!)
     );
@@ -312,7 +312,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
     id: string,
     accessToken: string,
     postDetails: PostDetails[],
-    integration: Integration
+    integration: PostIntegration
   ): Promise<PostResponse[]> {
     const agent = await this.getAgent(integration);
     const [firstPost] = postDetails;
@@ -349,7 +349,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
     lastCommentId: string | undefined,
     accessToken: string,
     postDetails: PostDetails[],
-    integration: Integration
+    integration: PostIntegration
   ): Promise<PostResponse[]> {
     const agent = await this.getAgent(integration);
     const [commentPost] = postDetails;
@@ -424,7 +424,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
     ],
   })
   async autoRepostPost(
-    integration: Integration,
+    integration: PostIntegration,
     id: string,
     fields: { likesAmount: string }
   ) {
@@ -485,7 +485,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
     ],
   })
   async autoPlugPost(
-    integration: Integration,
+    integration: PostIntegration,
     id: string,
     fields: { likesAmount: string; post: string }
   ) {
@@ -542,7 +542,7 @@ export class BlueskyProvider extends SocialAbstract implements SocialProvider {
     token: string,
     d: { query: string },
     id: string,
-    integration: Integration
+    integration: PostIntegration
   ) {
     const body = JSON.parse(
       AuthService.fixedDecryption(integration.customInstanceDetails!)

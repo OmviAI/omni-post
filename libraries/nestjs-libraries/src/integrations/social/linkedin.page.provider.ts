@@ -8,7 +8,7 @@ import {
 import { makeId } from '@gitroom/nestjs-libraries/services/make.is';
 import { LinkedinProvider } from '@gitroom/nestjs-libraries/integrations/social/linkedin.provider';
 import dayjs from 'dayjs';
-import { Integration } from '@prisma/client';
+import { PostIntegration } from '@prisma/client';
 import { Plug } from '@gitroom/helpers/decorators/plug.decorator';
 import { timer } from '@gitroom/helpers/utils/timer';
 import { Rules } from '@gitroom/nestjs-libraries/chat/rules.description.decorator';
@@ -91,14 +91,14 @@ export class LinkedinPageProvider
   }
 
   override async repostPostUsers(
-    integration: Integration,
-    originalIntegration: Integration,
+    integration: PostIntegration,
+    originalintegration: PostIntegration,
     postId: string,
     information: any
   ) {
     return super.repostPostUsers(
       integration,
-      originalIntegration,
+      originalintegration,
       postId,
       information,
       false
@@ -253,7 +253,7 @@ export class LinkedinPageProvider
     id: string,
     accessToken: string,
     postDetails: PostDetails[],
-    integration: Integration
+    integration: PostIntegration
   ): Promise<PostResponse[]> {
     return super.post(id, accessToken, postDetails, integration, 'company');
   }
@@ -264,7 +264,7 @@ export class LinkedinPageProvider
     lastCommentId: string | undefined,
     accessToken: string,
     postDetails: PostDetails[],
-    integration: Integration
+    integration: PostIntegration
   ): Promise<PostResponse[]> {
     return super.comment(
       id,
@@ -420,7 +420,7 @@ export class LinkedinPageProvider
     ],
   })
   async autoRepostPost(
-    integration: Integration,
+    integration: PostIntegration,
     id: string,
     fields: { likesAmount: string }
   ) {
@@ -498,7 +498,7 @@ export class LinkedinPageProvider
     ],
   })
   async autoPlugPost(
-    integration: Integration,
+    integration: PostIntegration,
     id: string,
     fields: { likesAmount: string; post: string }
   ) {

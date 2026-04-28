@@ -12,8 +12,24 @@ export class UsersService {
     private _organizationRepository: OrganizationRepository
   ) {}
 
+  ensureUserExists(input: {
+    id: string;
+    email: string;
+    name?: string | null;
+    providerName?: Provider | null;
+    providerId?: string | null;
+    activated?: boolean | null;
+  }) {
+    return this._usersRepository.ensureUserExists(input);
+  }
+
   getUserByEmail(email: string) {
     return this._usersRepository.getUserByEmail(email);
+  }
+
+  // For Clerk authentication: look up user by email without provider restriction
+  getUserByEmailAnyProvider(email: string) {
+    return this._usersRepository.getUserByEmailAnyProvider(email);
   }
 
   getUserById(id: string) {

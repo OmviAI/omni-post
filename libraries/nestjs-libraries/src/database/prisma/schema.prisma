@@ -1,44 +1,1112 @@
+// ============================================================
+// MERGED SCHEMA: WorldMobile + OmniPost (prism)
+// 
+// Rules applied:
+//   - WM User model kept as base (id: String @id — Clerk-compatible)
+//   - OmniPost User dropped; all its relations wired to WM User
+//   - OmniPost Integration renamed → PostIntegration (@@map "prism_Integration")
+//   - OmniPost OrderStatus enum renamed → PostOrderStatus
+//   - OmniPost Role enum renamed → UserRole  
+//   - All OmniPost models keep their @@map("prism_*") table names
+//   - All WM schemas kept: public, affiliate, cdr, sendgrid, zoho
+//   - OmniPost models added to "public" schema
+// ============================================================
+
 generator client {
-  provider = "prisma-client-js"
-  runtime  = "nodejs"
+  provider                    = "prisma-client-js"
+  previewFeatures             = ["multiSchema", "postgresqlExtensions"]
+  enable_experimental_decimal = "true"
+  recursive_type_depth        = "-1"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [citext, vector]
+  schemas    = ["affiliate", "cdr", "public", "sendgrid", "zoho"]
 }
 
+// ============================================================
+// WORLD MOBILE — USER (kept as base, Clerk-compatible)
+// ============================================================
+
+model User {
+  id                    String             @id @default(uuid())
+  email                 String
+  password              String?
+  providerName          Provider?
+  name                  String?
+  lastName              String?
+  imageUrl              String?
+  isSuperAdmin          Boolean            @default(false)
+  bio                   String?
+  audience              Int                @default(0)
+  pictureId             String?
+  providerId            String?
+  timezone              Int?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  lastReadNotifications DateTime           @default(now())
+  inviteId              String?
+  activated             Boolean            @default(true)
+  account               String?
+  connectedAccount      Boolean            @default(false)
+  lastOnline            DateTime           @default(now())
+  ip                    String?
+  agent                 String?
+  sendSuccessEmails     Boolean            @default(true)
+  sendFailureEmails     Boolean            @default(true)
+
+  // WM relations
+  messages     ChatMessage[]
+  edges        FlowEdge[]
+  nodes        FlowNode[]
+  folders      Folder[]
+  Integration  Integration[]
+  projects     Project[]
+  prompts      Prompt[]
+  sessions     Session[]
+  subfolders   Subfolder[]
+  preferences  UserPreference?
+
+  // OmniPost relations (wired to this User)
+  comments        Comments[]
+  itemUsers       ItemUser[]
+  groupBuyer      MessagesGroup[]    @relation("groupBuyer")
+  groupSeller     MessagesGroup[]    @relation("groupSeller")
+  orderBuyer      Orders[]           @relation("orderBuyer")
+  orderSeller     Orders[]           @relation("orderSeller")
+  payoutProblems  PayoutProblems[]
+  agency          SocialMediaAgency?
+  organizations   UserOrganization[]
+  picture         Media?             @relation("userPicture", fields: [pictureId], references: [id])
+
+  @@unique([email, providerName])
+  @@index([lastReadNotifications])
+  @@index([inviteId])
+  @@index([account])
+  @@index([lastOnline])
+  @@index([pictureId])
+  @@schema("public")
+}
+
+// ============================================================
+// WORLD MOBILE — CORE MODELS
+// ============================================================
+
+model Folder {
+  name        String
+  description String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  userId      String
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId   String?     @db.Uuid
+  project     Project?    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions    Session[]
+  subfolders  Subfolder[]
+
+  @@index([projectId])
+  @@index([userId])
+  @@schema("public")
+}
+
+model Session {
+  name        String
+  description String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  userId      String
+  id          String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  folderId    String?          @db.Uuid
+  projectId   String?          @db.Uuid
+  subfolderId String?          @db.Uuid
+  edges       FlowEdge[]
+  nodes       FlowNode[]
+  prompts     Prompt[]
+  folder      Folder?          @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  project     Project?         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  subfolder   Subfolder?       @relation(fields: [subfolderId], references: [id], onDelete: Cascade)
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  preferredBy UserPreference[]
+  tasks       Task[]           @relation("SessionTasks")
+
+  @@index([folderId])
+  @@index([userId])
+  @@index([projectId])
+  @@index([subfolderId])
+  @@schema("public")
+}
+
+model Prompt {
+  title       String
+  description String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  userId      String
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sessionId   String        @db.Uuid
+  messages    ChatMessage[]
+  session     Session       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([userId])
+  @@schema("public")
+}
+
+model ChatMessage {
+  role      String
+  content   String
+  timestamp DateTime @default(now())
+  userId    String
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  promptId  String   @db.Uuid
+  prompt    Prompt   @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([promptId])
+  @@index([userId])
+  @@schema("public")
+}
+
+model FlowNode {
+  id        String   @id @default(cuid())
+  nodeId    String
+  type      String
+  label     String
+  positionX Float
+  positionY Float
+  data      Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String
+  sessionId String   @db.Uuid
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, nodeId])
+  @@index([sessionId])
+  @@index([userId])
+  @@schema("public")
+}
+
+model FlowEdge {
+  id        String   @id @default(cuid())
+  edgeId    String
+  source    String
+  target    String
+  type      String?
+  data      Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String
+  sessionId String   @db.Uuid
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, edgeId])
+  @@index([sessionId])
+  @@index([userId])
+  @@schema("public")
+}
+
+model UserPreference {
+  userId             String   @id
+  onboardingGAITSeen Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  currentSessionId   String?  @db.Uuid
+  currentSession     Session? @relation(fields: [currentSessionId], references: [id])
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([currentSessionId])
+  @@schema("public")
+}
+
+model DataDocument {
+  id        BigInt                 @id @default(autoincrement())
+  text      String                 @db.VarChar
+  metadata_ Json?
+  node_id   String?                @db.VarChar
+  embedding Unsupported("vector")?
+  category  String?                @db.VarChar
+  flagged   Boolean                @default(false)
+  lock      Boolean                @default(false)
+  priority  String?                @db.VarChar
+  reason    String?                @db.VarChar
+  source    String?                @db.VarChar
+  tags      String[]
+
+  @@map("data_documents")
+  @@schema("public")
+}
+
+model Project {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  userId      String
+  folders     Folder[]
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions    Session[]
+
+  @@index([userId])
+  @@schema("public")
+}
+
+model Subfolder {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  userId      String
+  folderId    String    @db.Uuid
+  sessions    Session[]
+  folder      Folder    @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([folderId])
+  @@index([userId])
+  @@schema("public")
+}
+
+// WM Integration (OAuth — Google/Microsoft)
+model Integration {
+  id           String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String
+  provider     IntegrationProvider
+  service      IntegrationService
+  accessToken  String?
+  refreshToken String?
+  expiresAt    DateTime?           @db.Timestamptz(6)
+  scope        String?
+  tokenType    String?
+  metadata     Json?
+  createdAt    DateTime            @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime            @db.Timestamptz(6)
+  User         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider, service], map: "integration_user_provider_service_unique")
+  @@index([userId])
+  @@schema("public")
+}
+
+model ItemType {
+  id   Int    @id
+  name String @unique
+
+  @@schema("public")
+}
+
+model DailyScanPoints {
+  date          DateTime
+  did           String
+  locations     Json?
+  cells         Int?
+  scans         Int?
+  points        Int?
+  user_did_link user_did_link @relation(fields: [did], references: [did])
+
+  @@id([date, did])
+  @@map("daily_scan_points")
+  @@schema("public")
+}
+
+model user_did_link {
+  id                String            @id
+  user_id           String?           @db.VarChar(255)
+  did               String            @unique
+  is_linked         Boolean           @default(false)
+  created_at        DateTime          @default(now())
+  updated_at        DateTime
+  daily_scan_points DailyScanPoints[]
+
+  @@schema("public")
+}
+
+model opan_users {
+  id       String  @id @db.VarChar(255)
+  clerk_id String? @db.VarChar(255)
+  opan_id  String? @unique @db.Uuid
+
+  name     String? @db.VarChar(255)
+  email    String? @unique @db.Citext
+  username String? @db.Citext
+
+  role             String?  @db.VarChar(255)
+  is_partner       Boolean?
+  email_verified   Boolean?
+  image            String?  @db.VarChar(255)
+  display_username String?  @db.VarChar(255)
+  billing_address  String?  @db.VarChar(255)
+
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
+
+  opan_created_at                  DateTime? @db.Timestamptz(6)
+  last_logged_in                   DateTime? @db.Timestamptz(6)
+  affiliate_code                   String?
+  passkey_registered               Boolean   @default(false)
+  wallet_registered                Boolean   @default(false)
+  has_staked                       Boolean   @default(false)
+  payout_balance                   String?
+  completed_orders_count           Int       @default(0)
+  completed_orders_total_value     String?
+  wmtx_eligible_orders_count       Int       @default(0)
+  wmtx_eligible_orders_total_value String?
+  staking_total_staked             String?
+
+  opan_orders            opan_orders[] @relation("OpanOrdersByInternalUser")
+  opan_orders_by_opan_id opan_orders[] @relation("OpanOrdersByOpanUser")
+
+  opan_subscriptions            opan_subscriptions[] @relation("OpanSubsByInternalUser")
+  opan_subscriptions_by_opan_id opan_subscriptions[] @relation("OpanSubsByOpanUser")
+
+  opan_payments            opan_payments[] @relation("OpanPaymentsByInternalUser")
+  opan_payments_by_opan_id opan_payments[] @relation("OpanPaymentsByOpanUser")
+
+  accounts                           accounts[]
+  opan_admin_actions                 opan_admin_actions[]
+  host_locations                     host_locations[]
+  opan_operations                    opan_operations[]             @relation("OpanUserOperations")
+  tasks                              Task[]
+  threads_threads_host_idTousers     threads[]                     @relation("threads_host_idTousers")
+  threads_threads_operator_idTousers threads[]                     @relation("threads_operator_idTousers")
+  opan_user_linked_affiliates        opan_user_linked_affiliates[]
+  businessPlanChunks                 BusinessPlanChunk[]
+  businessPlan                       BusinessPlanSubmission?
+  opan_staking_transactions          opan_staking_transactions[]
+
+  @@index([username, display_username], map: "idx_opan_users_username_search")
+  @@map("opan_users")
+  @@schema("public")
+}
+
+model opan_orders {
+  id            String  @id
+  opan_order_id String? @unique @db.VarChar(255)
+
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  deleted_at DateTime? @db.Timestamp(6)
+
+  payment_type  String
+  payment_db_id String @db.Uuid
+  user_id       String @db.VarChar(255)
+  opan_user_id  String? @db.Uuid
+
+  status                    OrderStatus
+  coupon_code               String?
+  affiliate_id              String?
+  affiliate_discount_amount Int         @default(0)
+  family_discount_amount    Int         @default(0)
+  wm_coupon_code            String?
+  wm_coupon_discount_amount Int         @default(0)
+  tier_staking_percent      Float       @default(0)
+  tier_staking_discount     Int         @default(0)
+  whitelist_code            String?
+
+  opan_expired_items   opan_expired_items[]
+  opan_items           opan_items[]
+  opan_payment         opan_payments        @relation(fields: [payment_db_id], references: [id])
+  opan_user            opan_users           @relation("OpanOrdersByInternalUser", fields: [user_id], references: [id])
+  opan_user_by_opan_id opan_users?          @relation("OpanOrdersByOpanUser", fields: [opan_user_id], references: [opan_id])
+  opan_order_meta      opan_order_meta?     @relation("OpanOrderToMeta")
+
+  @@index([deleted_at])
+  @@index([user_id], map: "idx_opan_orders_user_id")
+  @@index([payment_db_id], map: "idx_opan_orders_payment_id")
+  @@index([opan_user_id], map: "idx_opan_orders_opan_user_id")
+  @@map("opan_orders")
+  @@schema("public")
+}
+
+model opan_items {
+  id           String  @id
+  opan_item_id String? @unique
+
+  created_at   DateTime?
+  updated_at   DateTime?
+  deleted_at   DateTime?
+  product_type String?
+  product_id   String?
+  order_id     String?
+  reservation_id  Int?
+  price           Int?
+  metadata        String?
+  parsed_metadata Json?
+
+  opan_expired_items opan_expired_items[]
+  opan_order         opan_orders?         @relation(fields: [order_id], references: [id])
+
+  @@index([deleted_at])
+  @@index([order_id], map: "idx_opan_items_order_id")
+  @@map("opan_items")
+  @@schema("public")
+}
+
+model opan_expired_items {
+  id                   Int     @id @default(autoincrement())
+  opan_expired_item_id String? @unique
+
+  product_type    String?
+  order_id        String?
+  item_id         String?
+  price           Int?
+  metadata        String?
+  parsed_metadata Json?
+
+  opan_item  opan_items?  @relation(fields: [item_id], references: [id])
+  opan_order opan_orders? @relation(fields: [order_id], references: [id])
+
+  @@index([order_id], map: "idx_opan_expired_items_order_id")
+  @@map("opan_expired_items")
+  @@schema("public")
+}
+
+model opan_payments {
+  id              String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  opan_payment_id String? @unique
+
+  provider    String? @db.VarChar(255)
+  provider_id String? @db.VarChar(255)
+  address_id  String? @db.Uuid
+  currency    String? @db.VarChar(255)
+  total       BigInt?
+  paid        BigInt?
+
+  user_id      String? @db.VarChar(255)
+  opan_user_id String? @db.Uuid
+
+  is_expired                        Boolean?
+  bank_transfer_url                 String?
+  bank_transfer_payment_intent_id   String?
+  bank_transfer_checkout_session_id String?
+  jira_order_id                     String?
+  freshdesk_id                      String?
+  node_ids                          String?
+
+  created_at       DateTime @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime @default(now()) @db.Timestamptz(6)
+  bank_payment_url String?
+  payment_status   String?
+  payment_url      String?
+
+  opan_orders          opan_orders[]
+  airnode_inventory    airnode_inventory[]
+  opan_addresses       opan_addresses?     @relation(fields: [address_id], references: [id], onUpdate: NoAction)
+  opan_user            opan_users?         @relation("OpanPaymentsByInternalUser", fields: [user_id], references: [id], onUpdate: NoAction)
+  opan_user_by_opan_id opan_users?         @relation("OpanPaymentsByOpanUser", fields: [opan_user_id], references: [opan_id])
+
+  @@index([created_at], map: "idx_opan_payments_created_at")
+  @@index([provider, provider_id], map: "idx_opan_payments_provider")
+  @@index([user_id], map: "idx_opan_payments_user")
+  @@index([opan_user_id], map: "idx_opan_payments_opan_user")
+  @@map("opan_payments")
+  @@schema("public")
+}
+
+model opan_subscriptions {
+  id                   String  @id
+  opan_subscription_id String? @unique
+
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime  @default(now()) @db.Timestamptz(6)
+  deleted_at DateTime? @db.Timestamptz(6)
+
+  user_id      String  @db.VarChar(255)
+  opan_user_id String? @db.Uuid
+
+  affiliate_id                  String?  @db.Uuid
+  current_period_start          DateTime @db.Timestamptz(6)
+  current_period_end            DateTime @db.Timestamptz(6)
+  status                        String
+  last_payment_id               Int?
+  last_payment_amount           Int?
+  product_id                    String?
+  product                       Int?
+  product_key                   String?
+  item_id                       String?
+  sub_period                    String
+  first_payment_discounted      Boolean? @default(false)
+  first_payment_discount_amount Int?     @default(0)
+  original_undiscounted_amount  Int?
+  affiliate_discount_amount     Int?
+  family_discount_amount        Int?     @default(0)
+  payment_provider              String?
+  provider_sub_id               String?
+  recurring_discount            Boolean?
+  package_type                  String?
+  details                       Json?
+
+  affiliateUser        opan_affiliate_users? @relation(fields: [affiliate_id], references: [id])
+  opan_user            opan_users            @relation("OpanSubsByInternalUser", fields: [user_id], references: [id], onDelete: Cascade)
+  opan_user_by_opan_id opan_users?           @relation("OpanSubsByOpanUser", fields: [opan_user_id], references: [opan_id])
+
+  @@index([affiliate_id])
+  @@index([deleted_at])
+  @@index([product_id])
+  @@index([user_id])
+  @@index([opan_user_id])
+  @@map("opan_subscriptions")
+  @@schema("public")
+}
+
+model opan_staking_transactions {
+  id                 String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  opan_staking_tx_id String @unique @db.Uuid
+
+  transaction_id     String?
+  contract_address   String?
+  wallet_address     String?
+  stake_tier         Int?
+  type               String?
+  amount             String?
+  transaction_amount String?
+  created_at         DateTime? @db.Timestamptz(6)
+  updated_at         DateTime? @db.Timestamptz(6)
+
+  opan_user_id String     @db.Uuid
+  opan_user    opan_users @relation(fields: [opan_user_id], references: [opan_id], onDelete: Cascade)
+
+  @@index([opan_user_id])
+  @@map("opan_staking_transactions")
+  @@schema("public")
+}
+
+model opan_order_meta {
+  order_db_id   String @id
+  reservation   Json?
+  wmtx_reward   Json?
+  checkout_info Json?
+  opan_order    opan_orders @relation("OpanOrderToMeta", fields: [order_db_id], references: [id])
+
+  @@map("opan_order_meta")
+  @@schema("public")
+}
+
+model accounts {
+  id                       String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  type                     String?    @db.VarChar(255)
+  provider                 String?    @db.VarChar(255)
+  provider_account_id      String?    @db.VarChar(255)
+  refresh_token            String?    @db.VarChar(255)
+  access_token             String?    @db.VarChar(255)
+  expires_at               BigInt?
+  token_type               String?    @db.VarChar(255)
+  scope                    String?    @db.VarChar(255)
+  id_token                 String?
+  session_state            String?    @db.VarChar(255)
+  user_id                  String?    @db.VarChar(255)
+  access_token_expires_at  DateTime?  @db.Timestamptz(6)
+  refresh_token_expires_at DateTime?  @db.Timestamptz(6)
+  password                 String?    @db.VarChar(255)
+  created_at               DateTime   @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime   @default(now()) @db.Timestamptz(6)
+  opan_user                opan_users? @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id], map: "idx_accounts_user")
+  @@map("accounts")
+  @@schema("public")
+}
+
+model opan_addresses {
+  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  created_at     DateTime         @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime         @default(now()) @db.Timestamptz(6)
+  host_locations host_locations[]
+  opan_payments  opan_payments[]
+
+  @@map("opan_addresses")
+  @@schema("public")
+}
+
+model opan_admin_actions {
+  id            BigInt      @id @default(autoincrement())
+  admin_id      String?     @db.VarChar(255)
+  user_id       String?     @db.VarChar(255)
+  user_email    String?     @db.VarChar(254)
+  action_status String?     @db.VarChar(20)
+  created_at    DateTime    @default(now()) @db.Timestamptz(6)
+  opan_user     opan_users? @relation(fields: [user_id], references: [id], onUpdate: NoAction)
+
+  @@index([created_at], map: "idx_opan_admin_actions_created_at")
+  @@index([user_id], map: "idx_opan_admin_actions_user")
+  @@map("opan_admin_actions")
+  @@schema("public")
+}
+
+model opan_operations {
+  h3_id      String
+  user_id    String   @db.VarChar(255)
+  status     String?  @db.VarChar(64)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
+  hexes      hexes    @relation(fields: [h3_id], references: [h3_id], onDelete: Cascade, onUpdate: NoAction)
+  opan_user  opan_users @relation("OpanUserOperations", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([h3_id, user_id])
+  @@map("opan_operations")
+  @@schema("public")
+}
+
+model Task {
+  id            Int           @id @default(autoincrement())
+  user_id       String        @db.VarChar(255)
+  title         String?
+  description   String?
+  status        TaskStatus
+  priority      TaskPriority?
+  due_at        DateTime?     @db.Timestamptz(6)
+  completed_at  DateTime?     @db.Timestamptz(6)
+  created_at    DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime      @default(now()) @db.Timestamptz(6)
+  sessionId     String?       @db.Uuid
+  current_stage String?       @db.VarChar(50)
+  latest_output Json?
+  session       Session?      @relation("SessionTasks", fields: [sessionId], references: [id], onDelete: Cascade)
+  opan_user     opan_users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([due_at], map: "idx_tasks_due")
+  @@index([user_id, status, due_at], map: "idx_tasks_user_status_due")
+  @@index([sessionId, status, due_at], map: "idx_tasks_session_status_due")
+  @@index([user_id], map: "idx_tasks_user_id")
+  @@index([sessionId], map: "idx_tasks_session_id")
+  @@map("tasks")
+  @@schema("public")
+}
+
+model airnode_inventory {
+  id                           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  uuid                         String?    @db.VarChar(255)
+  model                        String?    @db.VarChar(255)
+  payment_id                   String?    @db.Uuid
+  is_reserved                  Boolean?
+  status_deposit_paid          DateTime?  @db.Timestamptz(6)
+  status_purchased             DateTime?  @db.Timestamptz(6)
+  status_shipped               DateTime?  @db.Timestamptz(6)
+  status_delivered             DateTime?  @db.Timestamptz(6)
+  status_waiting_on_deployment DateTime?  @db.Timestamptz(6)
+  status_deployed              DateTime?  @db.Timestamptz(6)
+  status_provisioning          DateTime?  @db.Timestamptz(6)
+  status_active                DateTime?  @db.Timestamptz(6)
+  created_at                   DateTime   @default(now()) @db.Timestamptz(6)
+  updated_at                   DateTime   @default(now()) @db.Timestamptz(6)
+  opan_payment                 opan_payments? @relation(fields: [payment_id], references: [id], onUpdate: NoAction)
+  host_location_operator_map   host_location_operator_map[]
+
+  @@index([payment_id], map: "idx_airnode_inventory_payment_id")
+  @@schema("public")
+}
+
+model airnodes {
+  id                      String                @id
+  type                    Int?
+  purchase_status         Int?
+  initial_puchase_status  Int?
+  initial_purchase_status Int?
+  provisioning_status     Int?
+  host_id                 String?
+  operator_id             String?
+  hardware_cells_ids      Json?
+  updated_at              DateTime?             @db.Timestamptz(6)
+  parent_id               String?
+  version                 Int?
+  name                    String?
+  batch_name              String?
+  created_at              DateTime?             @default(now()) @db.Timestamptz(6)
+  deleted_at              DateTime?             @db.Timestamptz(6)
+  earnings                earnings[]
+  host_locations          host_locations[]
+  sites_with_airnodes     sites_with_airnodes[]
+
+  @@schema("public")
+}
+
+model hexes {
+  h3_id               String            @id
+  resolution          Int?
+  country             String?           @db.VarChar(64)
+  country_alpha_3     String?           @db.VarChar(8)
+  lng                 Float?
+  lat                 Float?
+  h3_cell_area        Float?
+  name                String?           @db.VarChar(256)
+  state_alpha_2       String?           @db.VarChar(8)
+  pop_total_h5        Float?
+  housing_total_h5    Float?
+  housing_occupied_h5 Float?
+  pop_density_h5      Float?
+  hex_estimated_value Float?
+  last_updated        DateTime?         @db.Timestamptz(6)
+  number_of_agents    Int?
+  buy_now_price       Float?
+  region              String?           @db.VarChar(255)
+  auctions            auctions[]
+  host_locations      host_locations[]
+  node_hosts          node_hosts[]
+  opan_operations     opan_operations[]
+
+  @@index([resolution], map: "idx_hexes_resolution")
+  @@schema("public")
+}
+
+model host_location_operator_map {
+  id                           String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  host_location_id             String?            @db.Uuid
+  operator_id                  String?            @db.Uuid
+  airnode_inventory_id         String?            @db.Uuid
+  thread_id                    String?            @db.Uuid
+  host_terms_accepted          DateTime?          @db.Timestamptz(6)
+  operator_terms_accepted      DateTime?          @db.Timestamptz(6)
+  contract_id                  String?            @db.VarChar(255)
+  world_mobile_terms_processed DateTime?          @db.Timestamptz(6)
+  created_at                   DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at                   DateTime           @default(now()) @db.Timestamptz(6)
+  airnode_inventory            airnode_inventory? @relation(fields: [airnode_inventory_id], references: [id], onUpdate: NoAction)
+  host_locations               host_locations?    @relation(fields: [host_location_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  operators                    operators?         @relation(fields: [operator_id], references: [id], onUpdate: NoAction)
+  threads                      threads?           @relation(fields: [thread_id], references: [id], onUpdate: NoAction)
+
+  @@index([host_location_id], map: "idx_hlom_host_location")
+  @@index([operator_id], map: "idx_hlom_operator")
+  @@schema("public")
+}
+
+model host_locations {
+  id                         String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id                    String?                      @db.VarChar(255)
+  airnode_id                 String?
+  height                     String?                      @db.VarChar(255)
+  power_supply               String?                      @db.VarChar(255)
+  hex_id                     String?
+  approved                   Boolean?
+  listed                     Boolean?
+  longitude                  Float?
+  latitude                   Float?
+  zipcode                    String?                      @db.VarChar(255)
+  phone                      String?                      @db.VarChar(255)
+  property_phone             String?                      @db.VarChar(255)
+  address_id                 String?                      @db.Uuid
+  equipment                  String?                      @db.VarChar(255)
+  instructions               String?                      @db.VarChar(255)
+  created_at                 DateTime                     @default(now()) @db.Timestamptz(6)
+  updated_at                 DateTime                     @default(now()) @db.Timestamptz(6)
+  host_location_operator_map host_location_operator_map[]
+  opan_addresses             opan_addresses?              @relation(fields: [address_id], references: [id], onUpdate: NoAction)
+  airnodes                   airnodes?                    @relation(fields: [airnode_id], references: [id], onUpdate: NoAction)
+  hexes                      hexes?                       @relation(fields: [hex_id], references: [h3_id], onUpdate: NoAction)
+  opan_user                  opan_users?                  @relation(fields: [user_id], references: [id], onUpdate: NoAction)
+  threads                    threads[]
+
+  @@index([airnode_id], map: "idx_host_locations_airnode")
+  @@index([hex_id], map: "idx_host_locations_hex")
+  @@index([user_id], map: "idx_host_locations_user")
+  @@schema("public")
+}
+
+model node_hosts {
+  id                   Int     @id @default(autoincrement())
+  h3_id                String
+  host_name            String?
+  host_email           String?
+  agent_name           String?
+  agent_email          String?
+  building_id          Int
+  building_address     String
+  building_height_m    Float?
+  building_type        String? @db.VarChar(64)
+  geom                 Json?
+  building_floor_count Int?
+  hexes                hexes   @relation(fields: [h3_id], references: [h3_id], onUpdate: NoAction)
+
+  @@index([building_id], map: "idx_node_hosts_building_id")
+  @@map("node_hosts")
+  @@schema("public")
+}
+
+model operators {
+  id                         String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                       String?
+  description                String?
+  active                     Boolean?
+  created_at                 DateTime                     @default(now()) @db.Timestamptz(6)
+  updated_at                 DateTime                     @default(now()) @db.Timestamptz(6)
+  host_location_operator_map host_location_operator_map[]
+
+  @@schema("public")
+}
+
+model auctions {
+  h3_id                           String
+  auction_id                      Int
+  status                          String?   @db.VarChar(64)
+  starting_bid                    Float?
+  current_bid                     Float?
+  current_bid_token               String?   @db.VarChar(64)
+  number_of_bids                  Int?
+  highest_bidder                  String?   @db.VarChar(64)
+  start_date                      DateTime? @db.Timestamptz(6)
+  end_date                        DateTime? @db.Timestamptz(6)
+  completion_date                 DateTime? @db.Timestamptz(6)
+  next_bid                        String?   @db.VarChar(64)
+  created_at                      DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at                      DateTime  @default(now()) @db.Timestamptz(6)
+  paused                          Boolean?
+  number_of_watchers              Int?
+  current_bid_token_amount        String?
+  duration_seconds                Int?
+  buy_now_lock                    Boolean?
+  locked_by_order                 String?
+  lock_expires_at                 DateTime? @db.Timestamptz(6)
+  paused_by_order                 String?
+  paused_on_chain                 Boolean?
+  pause_until                     DateTime? @db.Timestamptz(6)
+  buy_now_disable_threshold_bps   Int?
+  buy_now_disabled_previous_price Float?
+  buy_now_disabled_at             DateTime? @db.Timestamptz(6)
+  failed                          Boolean?
+  buy_now_price                   Float?
+  view_count                      Int       @default(0)
+  hexes                           hexes     @relation(fields: [h3_id], references: [h3_id], onDelete: Cascade)
+
+  @@id([h3_id, auction_id])
+  @@index([status, end_date], map: "idx_auctions_active_expiry")
+  @@schema("public")
+}
+
+model bids {
+  transaction_hash     String   @id
+  h3_id                String
+  auction_id           Int
+  auction_composite_id String?
+  user_address         String
+  amount               Decimal  @db.Decimal(78, 6)
+  token_address        String?
+  token_amount         String?
+  created_at           DateTime @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime @default(now()) @db.Timestamptz(6)
+  is_fiat              Boolean  @default(false)
+
+  @@index([h3_id, auction_id], map: "bids_h3_idx")
+  @@index([user_address], map: "bids_user_idx")
+  @@schema("public")
+}
+
+model sites {
+  id                  String                @id
+  name                String?
+  latitude            Float?
+  longitude           Float?
+  country             String?
+  city                String?
+  state               String?
+  hexes               Json?
+  apex_lat            Float?
+  apex_lng            Float?
+  sites_with_airnodes sites_with_airnodes[]
+
+  @@index([country, city], map: "idx_sites_country_city")
+  @@schema("public")
+}
+
+model sites_with_airnodes {
+  site_id    String
+  airnode_id String
+  airnodes   airnodes @relation(fields: [airnode_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  sites      sites    @relation(fields: [site_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([site_id, airnode_id])
+  @@schema("public")
+}
+
+model threads {
+  id                               String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  host_location_id                 String?                      @db.Uuid
+  host_id                          String?                      @db.VarChar(255)
+  operator_id                      String?                      @db.VarChar(255)
+  created_at                       DateTime                     @default(now()) @db.Timestamptz(6)
+  updated_at                       DateTime                     @default(now()) @db.Timestamptz(6)
+  host_location_operator_map       host_location_operator_map[]
+  users_threads_host_idTousers     opan_users?                  @relation("threads_host_idTousers", fields: [host_id], references: [id], onUpdate: NoAction)
+  host_locations                   host_locations?              @relation(fields: [host_location_id], references: [id], onUpdate: NoAction)
+  users_threads_operator_idTousers opan_users?                  @relation("threads_operator_idTousers", fields: [operator_id], references: [id], onUpdate: NoAction)
+
+  @@index([host_location_id], map: "idx_threads_hl")
+  @@index([host_id], map: "idx_threads_host_id")
+  @@index([operator_id], map: "idx_threads_operator_id")
+  @@schema("public")
+}
+
+model opan_user_linked_affiliates {
+  user_id        String     @db.VarChar(255)
+  affiliate_code String
+  created_at     DateTime   @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime   @default(now()) @db.Timestamptz(6)
+  deleted_at     DateTime?  @db.Timestamptz(6)
+  opan_user      opan_users @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([user_id, affiliate_code])
+  @@index([created_at], map: "idx_opan_ula_created_at")
+  @@map("opan_user_linked_affiliates")
+  @@schema("public")
+}
+
+model BusinessPlanSubmission {
+  id          String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String              @unique
+  filename    String
+  contentType String
+  sizeBytes   Int
+  file        Bytes
+  submittedAt DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  s3Url       String?
+  chunks      BusinessPlanChunk[]
+  user        opan_users          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@schema("public")
+}
+
+model BusinessPlanChunk {
+  id             BigInt                 @id @default(autoincrement())
+  businessPlanId String                 @db.Uuid
+  userId         String
+  text           String                 @db.VarChar
+  metadata_      Json?
+  embedding      Unsupported("vector")?
+  chunkIndex     Int
+  businessPlan   BusinessPlanSubmission @relation(fields: [businessPlanId], references: [id], onDelete: Cascade)
+  user           opan_users             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([businessPlanId])
+  @@index([userId])
+  @@schema("public")
+}
+
+model ProductPricingMatrixItem {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  productCode String   @db.VarChar(128)
+  productName String   @db.VarChar(256)
+  category    String   @db.VarChar(128)
+  subCategory String   @db.VarChar(128)
+  priceRaw    String
+  notes       String?
+  sourceRow   Int?
+  importBatch String?  @db.VarChar(64)
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  @@index([productCode])
+  @@index([category, subCategory])
+  @@index([importBatch])
+  @@map("product_pricing_matrix_items")
+  @@schema("public")
+}
+
+model SharedContact {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email            String    @unique @db.Citext
+  displayName      String?   @db.VarChar(255)
+  companyName      String?   @db.VarChar(255)
+  jobTitle         String?   @db.VarChar(255)
+  businessPhones   Json?     @db.JsonB
+  mobilePhone      String?   @db.VarChar(50)
+  emailAddresses   Json?     @db.JsonB
+  source           String?   @db.VarChar(20)
+  createdByUserId  String?   @db.VarChar(255)
+  createdAt        DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime  @db.Timestamptz(6)
+  photo            Bytes?
+  photoContentType String?   @db.VarChar(100)
+  address          String?
+  links            String?
+  x                String?   @db.VarChar(255)
+
+  @@index([email], map: "SharedContact_email_idx")
+  @@map("SharedContact")
+  @@schema("public")
+}
+
+model TokenSpotPrice {
+  id        BigInt   @id @default(autoincrement())
+  symbol    String   @db.VarChar(16)
+  currency  String   @db.VarChar(8)
+  price     Decimal  @db.Decimal(38, 18)
+  asOf      DateTime @db.Timestamptz(6)
+  sourceUrl String   @db.Text
+  provider  String   @default("coinmarketcap") @db.VarChar(64)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  @@unique([symbol, currency])
+  @@index([symbol])
+  @@index([updatedAt])
+  @@map("token_spot_prices")
+  @@schema("public")
+}
+
+model ingest_cursors {
+  key       String   @id
+  value     DateTime @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  @@map("ingest_cursors")
+  @@schema("public")
+}
+
+model NbApiSyncState {
+  key          String    @id @db.Text
+  lastSyncedAt DateTime? @map("last_synced_at") @db.Timestamptz(6)
+
+  @@map("nb_api_sync_state")
+  @@schema("public")
+}
+
+// ============================================================
+// OMNIPOST (prism) MODELS — all retain @@map("prism_*")
+// ============================================================
+
 model Organization {
-  id                String             @id @default(uuid())
-  name              String
-  description       String?
-  apiKey            String?
-  paymentId         String?
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  allowTrial        Boolean            @default(false)
-  isTrailing        Boolean            @default(false)
-  autoPost          AutoPost[]
-  Comments          Comments[]
-  credits           Credits[]
-  customers         Customer[]
-  errors            Errors[]
-  github            GitHub[]
-  Integration       Integration[]
-  media             Media[]
+  id            String             @id @default(uuid())
+  name          String
+  description   String?
+  apiKey        String?
+  paymentId     String?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  allowTrial    Boolean            @default(false)
+  isTrailing    Boolean            @default(false)
+  autoPost      AutoPost[]
+  Comments      Comments[]
+  credits       Credits[]
+  customers     Customer[]
+  errors        Errors[]
+  github        GitHub[]
+  Integration   PostIntegration[]
+  media         Media[]
   buyerOrganization MessagesGroup[]
-  notifications     Notifications[]
-  plugs             Plugs[]
-  post              Post[]             @relation("organization")
-  submittedPost     Post[]             @relation("submittedForOrg")
-  sets              Sets[]
-  signatures        Signatures[]
-  subscription      Subscription?
-  tags              Tags[]
-  thirdParty        ThirdParty[]
-  usedCodes         UsedCodes[]
-  users             UserOrganization[]
-  webhooks          Webhooks[]
+  notifications Notifications[]
+  plugs         Plugs[]
+  post          Post[]             @relation("organization")
+  submittedPost Post[]             @relation("submittedForOrg")
+  sets          Sets[]
+  signatures    Signatures[]
+  subscription  Subscription?
+  tags          Tags[]
+  thirdParty    ThirdParty[]
+  usedCodes     UsedCodes[]
+  users         UserOrganization[]
+  webhooks      Webhooks[]
+
+  @@map("prism_Organization")
+  @@schema("public")
 }
 
 model Tags {
@@ -54,6 +1122,8 @@ model Tags {
 
   @@index([orgId])
   @@index([deletedAt])
+  @@map("prism_Tags")
+  @@schema("public")
 }
 
 model TagsPosts {
@@ -66,50 +1136,8 @@ model TagsPosts {
 
   @@id([postId, tagId])
   @@unique([postId, tagId])
-}
-
-model User {
-  id                    String             @id @default(uuid())
-  email                 String
-  password              String?
-  providerName          Provider
-  name                  String?
-  lastName              String?
-  isSuperAdmin          Boolean            @default(false)
-  bio                   String?
-  audience              Int                @default(0)
-  pictureId             String?
-  providerId            String?
-  timezone              Int
-  createdAt             DateTime           @default(now())
-  updatedAt             DateTime           @updatedAt
-  lastReadNotifications DateTime           @default(now())
-  inviteId              String?
-  activated             Boolean            @default(true)
-  account               String?
-  connectedAccount      Boolean            @default(false)
-  lastOnline            DateTime           @default(now())
-  ip                    String?
-  agent                 String?
-  comments              Comments[]
-  items                 ItemUser[]
-  groupBuyer            MessagesGroup[]    @relation("groupBuyer")
-  groupSeller           MessagesGroup[]    @relation("groupSeller")
-  orderBuyer            Orders[]           @relation("orderBuyer")
-  orderSeller           Orders[]           @relation("orderSeller")
-  payoutProblems        PayoutProblems[]
-  agencies              SocialMediaAgency?
-  picture               Media?             @relation(fields: [pictureId], references: [id])
-  organizations         UserOrganization[]
-  sendSuccessEmails     Boolean            @default(true)
-  sendFailureEmails     Boolean            @default(true)
-
-  @@unique([email, providerName])
-  @@index([lastReadNotifications])
-  @@index([inviteId])
-  @@index([account])
-  @@index([lastOnline])
-  @@index([pictureId])
+  @@map("prism_TagsPosts")
+  @@schema("public")
 }
 
 model UsedCodes {
@@ -121,6 +1149,8 @@ model UsedCodes {
   organization Organization @relation(fields: [orgId], references: [id])
 
   @@index([code])
+  @@map("prism_UsedCodes")
+  @@schema("public")
 }
 
 model UserOrganization {
@@ -128,7 +1158,7 @@ model UserOrganization {
   userId         String
   organizationId String
   disabled       Boolean      @default(false)
-  role           Role         @default(USER)
+  role           UserRole     @default(USER)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   organization   Organization @relation(fields: [organizationId], references: [id])
@@ -136,6 +1166,8 @@ model UserOrganization {
 
   @@unique([userId, organizationId])
   @@index([disabled])
+  @@map("prism_UserOrganization")
+  @@schema("public")
 }
 
 model GitHub {
@@ -151,6 +1183,8 @@ model GitHub {
 
   @@index([login])
   @@index([organizationId])
+  @@map("prism_GitHub")
+  @@schema("public")
 }
 
 model Trending {
@@ -163,12 +1197,17 @@ model Trending {
   updatedAt    DateTime @updatedAt
 
   @@index([hash])
+  @@map("prism_Trending")
+  @@schema("public")
 }
 
 model TrendingLog {
   id       String   @id @default(uuid())
   language String?
   date     DateTime
+
+  @@map("prism_TrendingLog")
+  @@schema("public")
 }
 
 model ItemUser {
@@ -180,6 +1219,8 @@ model ItemUser {
   @@unique([userId, key])
   @@index([userId])
   @@index([key])
+  @@map("prism_ItemUser")
+  @@schema("public")
 }
 
 model Star {
@@ -194,6 +1235,8 @@ model Star {
   updatedAt  DateTime @updatedAt
 
   @@unique([login, date])
+  @@map("prism_Star")
+  @@schema("public")
 }
 
 model Media {
@@ -211,11 +1254,13 @@ model Media {
   thumbnailTimestamp Int?
   organization       Organization        @relation(fields: [organizationId], references: [id])
   agencies           SocialMediaAgency[]
-  userPicture        User[]
+  userPicture        User[]              @relation("userPicture")
 
   @@index([name])
   @@index([organizationId])
   @@index([type])
+  @@map("prism_Media")
+  @@schema("public")
 }
 
 model SocialMediaAgency {
@@ -245,6 +1290,8 @@ model SocialMediaAgency {
   @@index([userId])
   @@index([deletedAt])
   @@index([id])
+  @@map("prism_SocialMediaAgency")
+  @@schema("public")
 }
 
 model SocialMediaAgencyNiche {
@@ -253,6 +1300,8 @@ model SocialMediaAgencyNiche {
   agency   SocialMediaAgency @relation(fields: [agencyId], references: [id])
 
   @@id([agencyId, niche])
+  @@map("prism_SocialMediaAgencyNiche")
+  @@schema("public")
 }
 
 model Credits {
@@ -266,6 +1315,8 @@ model Credits {
 
   @@index([organizationId])
   @@index([createdAt])
+  @@map("prism_Credits")
+  @@schema("public")
 }
 
 model Subscription {
@@ -284,22 +1335,27 @@ model Subscription {
 
   @@index([organizationId])
   @@index([deletedAt])
+  @@map("prism_Subscription")
+  @@schema("public")
 }
 
 model Customer {
-  id           String        @id @default(uuid())
+  id           String            @id @default(uuid())
   name         String
   orgId        String
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
   deletedAt    DateTime?
-  organization Organization  @relation(fields: [orgId], references: [id])
-  integrations Integration[]
+  organization Organization      @relation(fields: [orgId], references: [id])
+  integrations PostIntegration[]
 
   @@unique([orgId, name, deletedAt])
+  @@map("prism_Customer")
+  @@schema("public")
 }
 
-model Integration {
+// OmniPost Integration renamed to PostIntegration to avoid conflict with WM Integration
+model PostIntegration {
   id                    String                 @id @default(cuid())
   internalId            String
   organizationId        String
@@ -341,6 +1397,8 @@ model Integration {
   @@index([inBetweenSteps])
   @@index([refreshNeeded])
   @@index([disabled])
+  @@map("prism_Integration")
+  @@schema("public")
 }
 
 model Signatures {
@@ -356,6 +1414,8 @@ model Signatures {
   @@index([createdAt])
   @@index([organizationId])
   @@index([deletedAt])
+  @@map("prism_Signatures")
+  @@schema("public")
 }
 
 model Comments {
@@ -376,11 +1436,13 @@ model Comments {
   @@index([userId])
   @@index([postId])
   @@index([deletedAt])
+  @@map("prism_Comments")
+  @@schema("public")
 }
 
 model Post {
   id                         String                    @id @default(cuid())
-  state                      State                     @default(QUEUE)
+  state                      PostState                 @default(QUEUE)
   publishDate                DateTime
   organizationId             String
   integrationId              String
@@ -406,7 +1468,7 @@ model Post {
   comments                   Comments[]
   errors                     Errors[]
   payoutProblems             PayoutProblems[]
-  integration                Integration               @relation(fields: [integrationId], references: [id])
+  integration                PostIntegration           @relation(fields: [integrationId], references: [id])
   lastMessage                Messages?                 @relation(fields: [lastMessageId], references: [id])
   organization               Organization              @relation("organization", fields: [organizationId], references: [id])
   parentPost                 Post?                     @relation("parentPostId", fields: [parentPostId], references: [id])
@@ -429,6 +1491,8 @@ model Post {
   @@index([updatedAt])
   @@index([releaseURL])
   @@index([integrationId])
+  @@map("prism_Post")
+  @@schema("public")
 }
 
 model Notifications {
@@ -444,6 +1508,8 @@ model Notifications {
   @@index([createdAt])
   @@index([organizationId])
   @@index([deletedAt])
+  @@map("prism_Notifications")
+  @@schema("public")
 }
 
 model MessagesGroup {
@@ -463,6 +1529,8 @@ model MessagesGroup {
   @@index([createdAt])
   @@index([updatedAt])
   @@index([buyerOrganizationId])
+  @@map("prism_MessagesGroup")
+  @@schema("public")
 }
 
 model PayoutProblems {
@@ -477,13 +1545,16 @@ model PayoutProblems {
   order     Orders   @relation(fields: [orderId], references: [id])
   post      Post?    @relation(fields: [postId], references: [id])
   user      User     @relation(fields: [userId], references: [id])
+
+  @@map("prism_PayoutProblems")
+  @@schema("public")
 }
 
 model Orders {
   id             String           @id @default(uuid())
   buyerId        String
   sellerId       String
-  status         OrderStatus
+  status         PostOrderStatus
   messageGroupId String
   captureId      String?
   createdAt      DateTime         @default(now())
@@ -500,24 +1571,28 @@ model Orders {
   @@index([updatedAt])
   @@index([createdAt])
   @@index([messageGroupId])
+  @@map("prism_Orders")
+  @@schema("public")
 }
 
 model OrderItems {
-  id            String      @id @default(uuid())
+  id            String          @id @default(uuid())
   orderId       String
   integrationId String
   quantity      Int
   price         Int
-  integration   Integration @relation(fields: [integrationId], references: [id])
-  order         Orders      @relation(fields: [orderId], references: [id])
+  integration   PostIntegration @relation(fields: [integrationId], references: [id])
+  order         Orders          @relation(fields: [orderId], references: [id])
 
   @@index([orderId])
   @@index([integrationId])
+  @@map("prism_OrderItems")
+  @@schema("public")
 }
 
 model Messages {
   id        String        @id @default(uuid())
-  from      From
+  from      MessageFrom
   content   String?
   groupId   String
   special   String?
@@ -530,30 +1605,36 @@ model Messages {
   @@index([groupId])
   @@index([createdAt])
   @@index([deletedAt])
+  @@map("prism_Messages")
+  @@schema("public")
 }
 
 model Plugs {
-  id             String       @id @default(uuid())
+  id             String          @id @default(uuid())
   organizationId String
   plugFunction   String
   data           String
   integrationId  String
-  activated      Boolean      @default(true)
-  integration    Integration  @relation(fields: [integrationId], references: [id])
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  activated      Boolean         @default(true)
+  integration    PostIntegration @relation(fields: [integrationId], references: [id])
+  organization   Organization    @relation(fields: [organizationId], references: [id])
 
   @@unique([plugFunction, integrationId])
   @@index([organizationId])
+  @@map("prism_Plugs")
+  @@schema("public")
 }
 
 model ExisingPlugData {
-  id            String      @id @default(uuid())
+  id            String          @id @default(uuid())
   integrationId String
   methodName    String
   value         String
-  integration   Integration @relation(fields: [integrationId], references: [id])
+  integration   PostIntegration @relation(fields: [integrationId], references: [id])
 
   @@unique([integrationId, methodName, value])
+  @@map("prism_ExisingPlugData")
+  @@schema("public")
 }
 
 model PopularPosts {
@@ -564,18 +1645,23 @@ model PopularPosts {
   hook      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@map("prism_PopularPosts")
+  @@schema("public")
 }
 
 model IntegrationsWebhooks {
   integrationId String
   webhookId     String
-  integration   Integration @relation(fields: [integrationId], references: [id])
-  webhook       Webhooks    @relation(fields: [webhookId], references: [id])
+  integration   PostIntegration @relation(fields: [integrationId], references: [id])
+  webhook       Webhooks        @relation(fields: [webhookId], references: [id])
 
   @@id([integrationId, webhookId])
   @@unique([integrationId, webhookId])
   @@index([integrationId])
   @@index([webhookId])
+  @@map("prism_IntegrationsWebhooks")
+  @@schema("public")
 }
 
 model Webhooks {
@@ -591,6 +1677,8 @@ model Webhooks {
 
   @@index([organizationId])
   @@index([deletedAt])
+  @@map("prism_Webhooks")
+  @@schema("public")
 }
 
 model AutoPost {
@@ -612,6 +1700,8 @@ model AutoPost {
   organization    Organization @relation(fields: [organizationId], references: [id])
 
   @@index([deletedAt])
+  @@map("prism_AutoPost")
+  @@schema("public")
 }
 
 model Sets {
@@ -624,6 +1714,8 @@ model Sets {
   organization   Organization @relation(fields: [organizationId], references: [id])
 
   @@index([organizationId])
+  @@map("prism_Sets")
+  @@schema("public")
 }
 
 model ThirdParty {
@@ -641,6 +1733,8 @@ model ThirdParty {
   @@unique([organizationId, internalId])
   @@index([organizationId])
   @@index([deletedAt])
+  @@map("prism_ThirdParty")
+  @@schema("public")
 }
 
 model Errors {
@@ -657,6 +1751,8 @@ model Errors {
 
   @@index([organizationId])
   @@index([createdAt])
+  @@map("prism_Errors")
+  @@schema("public")
 }
 
 model Mentions {
@@ -669,9 +1765,13 @@ model Mentions {
 
   @@id([name, username, platform, image])
   @@index([createdAt])
+  @@map("prism_Mentions")
+  @@schema("public")
 }
 
-/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+// ── Mastra AI models ────────────────────────────────────────────────────────
+
+/// No valid unique identifier — Prisma Client ignores this model
 model mastra_ai_spans {
   traceId      String
   spanId       String
@@ -699,10 +1799,12 @@ model mastra_ai_spans {
   @@index([parentSpanId, startedAt(sort: Desc)], map: "public_mastra_ai_spans_parentspanid_startedat_idx")
   @@index([spanType, startedAt(sort: Desc)], map: "public_mastra_ai_spans_spantype_startedat_idx")
   @@index([traceId, startedAt(sort: Desc)], map: "public_mastra_ai_spans_traceid_startedat_idx")
+  @@map("prism_mastra_ai_spans")
+  @@schema("public")
   @@ignore
 }
 
-/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+/// No valid unique identifier — Prisma Client ignores this model
 model mastra_evals {
   input         String
   output        String
@@ -719,6 +1821,8 @@ model mastra_evals {
   createdAtZ    DateTime? @default(now()) @db.Timestamptz(6)
 
   @@index([agent_name, created_at(sort: Desc)], map: "public_mastra_evals_agent_name_created_at_idx")
+  @@map("prism_mastra_evals")
+  @@schema("public")
   @@ignore
 }
 
@@ -733,6 +1837,8 @@ model mastra_messages {
   createdAtZ DateTime? @default(now()) @db.Timestamptz(6)
 
   @@index([thread_id, createdAt(sort: Desc)], map: "public_mastra_messages_thread_id_createdat_idx")
+  @@map("prism_mastra_messages")
+  @@schema("public")
 }
 
 model mastra_resources {
@@ -743,6 +1849,9 @@ model mastra_resources {
   updatedAt     DateTime  @db.Timestamp(6)
   createdAtZ    DateTime? @default(now()) @db.Timestamptz(6)
   updatedAtZ    DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@map("prism_mastra_resources")
+  @@schema("public")
 }
 
 model mastra_scorers {
@@ -780,6 +1889,8 @@ model mastra_scorers {
   spanId               String?
 
   @@index([traceId, spanId, createdAt(sort: Desc)], map: "public_mastra_scores_trace_id_span_id_created_at_idx")
+  @@map("prism_mastra_scorers")
+  @@schema("public")
 }
 
 model mastra_threads {
@@ -793,6 +1904,8 @@ model mastra_threads {
   updatedAtZ DateTime? @default(now()) @db.Timestamptz(6)
 
   @@index([resourceId, createdAt(sort: Desc)], map: "public_mastra_threads_resourceid_createdat_idx")
+  @@map("prism_mastra_threads")
+  @@schema("public")
 }
 
 model mastra_traces {
@@ -813,6 +1926,8 @@ model mastra_traces {
   createdAtZ   DateTime? @default(now()) @db.Timestamptz(6)
 
   @@index([name, startTime(sort: Desc)], map: "public_mastra_traces_name_starttime_idx")
+  @@map("prism_mastra_traces")
+  @@schema("public")
 }
 
 model mastra_workflow_snapshot {
@@ -826,25 +1941,485 @@ model mastra_workflow_snapshot {
   updatedAtZ    DateTime? @default(now()) @db.Timestamptz(6)
 
   @@unique([workflow_name, run_id], map: "public_mastra_workflow_snapshot_workflow_name_run_id_key")
+  @@map("prism_mastra_workflow_snapshot")
+  @@schema("public")
 }
 
+// ============================================================
+// AFFILIATE SCHEMA
+// ============================================================
+
+model opan_affiliate_users {
+  id                  String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                String?              @db.VarChar(100)
+  email               String?              @unique @db.VarChar(254)
+  role                String?              @db.VarChar(20)
+  created_at          DateTime             @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime             @default(now()) @db.Timestamptz(6)
+  about               String?
+  advanced_1          Int?                 @default(0)
+  advanced_12         Int?                 @default(0)
+  advanced_6          Int?                 @default(0)
+  affiliation_code    String?              @db.VarChar(20)
+  code                String?              @db.VarChar(20)
+  discord             String?              @db.VarChar(100)
+  discount_type       String?
+  essential_1         Int?                 @default(0)
+  essential_12        Int?                 @default(0)
+  essential_6         Int?                 @default(0)
+  global_1            Int?                 @default(0)
+  global_12           Int?                 @default(0)
+  global_6            Int?                 @default(0)
+  login_email_sent_at DateTime?            @db.Timestamptz(6)
+  referrals           Int?                 @default(0)
+  status              String?              @db.VarChar(20)
+  telegram            String?              @db.VarChar(100)
+  x                   String?              @db.VarChar(100)
+  opan_subscriptions  opan_subscriptions[]
+  earnings            earnings[]           @relation("AffiliateEarnings")
+
+  @@map("users")
+  @@schema("affiliate")
+}
+
+// ============================================================
+// CDR SCHEMA
+// ============================================================
+
+model earnings {
+  id                  String                @id
+  month_start         DateTime?             @db.Date
+  month_year_raw      String?
+  node_id             String?
+  node_type           String?
+  affiliate_user_id   String?               @db.Uuid
+  operator_total      BigInt?
+  host_total          BigInt?
+  host_operator_total BigInt?
+  created_at          DateTime              @default(now()) @db.Timestamptz(6)
+  users               opan_affiliate_users? @relation("AffiliateEarnings", fields: [affiliate_user_id], references: [id], onUpdate: NoAction)
+  airnodes            airnodes?             @relation(fields: [node_id], references: [id], onUpdate: NoAction)
+
+  @@index([month_start], map: "idx_cdr_earnings_month_start")
+  @@index([node_id], map: "idx_cdr_earnings_node")
+  @@index([affiliate_user_id], map: "idx_cdr_earnings_affiliate_user_id")
+  @@schema("cdr")
+}
+
+// ============================================================
+// SENDGRID SCHEMA
+// ============================================================
+
+model SendgridBrowserStat {
+  id            String   @id @default(cuid())
+  date          DateTime
+  metricType    String
+  name          String
+  clicks        Int
+  unique_clicks Int
+
+  @@unique([date, name])
+  @@index([date])
+  @@index([name])
+  @@schema("sendgrid")
+}
+
+model SendgridCategory {
+  id       String @id @default(cuid())
+  category String @unique
+
+  @@schema("sendgrid")
+}
+
+model SendgridCategoryDailyStat {
+  id                String   @id @default(cuid())
+  date              DateTime
+  metricType        String
+  category          String
+  blocks            Int
+  bounce_drops      Int
+  bounces           Int
+  clicks            Int
+  deferred          Int
+  delivered         Int
+  invalid_emails    Int
+  opens             Int
+  processed         Int
+  requests          Int
+  spam_report_drops Int
+  spam_reports      Int
+  unique_clicks     Int
+  unique_opens      Int
+  unsubscribe_drops Int
+  unsubscribes      Int
+
+  @@unique([date, category])
+  @@index([date])
+  @@index([category])
+  @@schema("sendgrid")
+}
+
+model SendgridDesktopStat {
+  id           String   @id @default(cuid())
+  date         DateTime
+  metricType   String
+  name         String
+  opens        Int
+  unique_opens Int
+
+  @@unique([date, name])
+  @@index([date])
+  @@index([name])
+  @@schema("sendgrid")
+}
+
+model SendgridPhoneStat {
+  id           String   @id @default(cuid())
+  date         DateTime
+  metricType   String
+  name         String
+  opens        Int
+  unique_opens Int
+
+  @@unique([date, name])
+  @@index([date])
+  @@index([name])
+  @@schema("sendgrid")
+}
+
+model SendgridGeoStat {
+  id            String   @id @default(cuid())
+  date          DateTime
+  metricType    String
+  countryCode   String
+  clicks        Int
+  opens         Int
+  unique_clicks Int
+  unique_opens  Int
+
+  @@unique([date, countryCode])
+  @@index([date])
+  @@index([countryCode])
+  @@schema("sendgrid")
+}
+
+model SendgridIp {
+  id                 String           @id @default(cuid())
+  ip                 String           @unique
+  is_auto_warmup     Boolean
+  added_at_epoch     BigInt
+  updated_at_epoch   BigInt?
+  is_enabled         Boolean?
+  is_leased          Boolean
+  is_parent_assigned Boolean
+  pools              SendgridIpPool[]
+
+  @@schema("sendgrid")
+}
+
+model SendgridPool {
+  poolId String           @id
+  name   String           @unique
+  ips    SendgridIpPool[]
+
+  @@schema("sendgrid")
+}
+
+model SendgridIpPool {
+  ipId   String
+  poolId String
+  ip     SendgridIp   @relation(fields: [ipId], references: [id], onDelete: Cascade)
+  pool   SendgridPool @relation(fields: [poolId], references: [poolId], onDelete: Cascade)
+
+  @@id([ipId, poolId])
+  @@index([poolId])
+  @@schema("sendgrid")
+}
+
+model SendgridIpsMetadata {
+  id         String   @id @default(cuid())
+  after_key  String?
+  before_key String?
+  createdAt  DateTime @default(now())
+
+  @@schema("sendgrid")
+}
+
+model SendgridMailboxProviderStat {
+  id            String   @id @default(cuid())
+  date          DateTime
+  metricType    String
+  providerName  String
+  blocks        Int
+  bounces       Int
+  clicks        Int
+  deferred      Int
+  delivered     Int
+  drops         Int
+  opens         Int
+  processed     Int
+  requests      Int
+  spam_reports  Int
+  unique_clicks Int
+  unique_opens  Int
+
+  @@unique([date, providerName])
+  @@index([date])
+  @@index([providerName])
+  @@schema("sendgrid")
+}
+
+model SendgridDailyStat {
+  id                String   @id @default(cuid())
+  date              DateTime @unique
+  blocks            Int
+  bounce_drops      Int
+  bounces           Int
+  clicks            Int
+  deferred          Int
+  delivered         Int
+  invalid_emails    Int
+  opens             Int
+  processed         Int
+  requests          Int
+  spam_report_drops Int
+  spam_reports      Int
+  unique_clicks     Int
+  unique_opens      Int
+  unsubscribe_drops Int
+  unsubscribes      Int
+
+  @@index([date])
+  @@schema("sendgrid")
+}
+
+model SendgridDesignLibrary {
+  id                     String                          @id
+  name                   String
+  subject                String?
+  generate_plain_content Boolean
+  thumbnail_url          String?
+  editor                 String
+  created_at             DateTime
+  updated_at             DateTime
+  categories             SendgridDesignLibraryCategory[]
+
+  @@schema("sendgrid")
+}
+
+model SendgridDesignLibraryCategory {
+  id       String                @id @default(cuid())
+  designId String
+  category String
+  design   SendgridDesignLibrary @relation(fields: [designId], references: [id], onDelete: Cascade)
+
+  @@unique([designId, category])
+  @@index([category])
+  @@schema("sendgrid")
+}
+
+// ============================================================
+// ZOHO SCHEMA
+// ============================================================
+
+model DeskTicket {
+  id                   String    @id
+  ticketNumber         String?
+  layoutId             String?
+  email                String?
+  phone                String?
+  subject              String?
+  status               String?
+  statusType           String?
+  createdTime          DateTime?
+  category             String?
+  language             String?
+  subCategory          String?
+  priority             String?
+  channel              String?
+  dueDate              DateTime?
+  responseDueDate      DateTime?
+  commentCount         Int?
+  sentiment            String?
+  threadCount          Int?
+  closedTime           DateTime?
+  onholdTime           DateTime?
+  accountId            String?
+  departmentId         String?
+  contactId            String?
+  productId            String?
+  assigneeId           String?
+  teamId               String?
+  relationshipType     String?
+  sourceExtID          String?
+  sourceAppName        String?
+  sourceAppPhotoURL    String?
+  sourcePermalink      String?
+  sourceType           String?
+  lastThreadChannel    String?
+  lastThreadIsDraft    Boolean?
+  lastThreadIsForward  Boolean?
+  lastThreadDirection  String?
+  customerResponseTime DateTime?
+  isArchived           Boolean?
+  isSpam               Boolean?
+  channelCode          String?
+  webUrl               String?
+
+  @@schema("zoho")
+}
+
+model SalesIQFAQ {
+  id               String   @id
+  defaultQuestion  String?
+  answer           String?
+  draftedAnswer    String?
+  channels         String?
+  type             String?
+  version          String?
+  enabled          Boolean?
+  published        Boolean?
+  departmentId     String?
+  categoryId       String?
+  categoryName     String?
+  languageId       String?
+  languageCode     String?
+  modifierId       String?
+  modifierName     String?
+  modifierEmail    String?
+  modifierType     String?
+  modifierImageURL String?
+  createdTime      String?
+  draftedTime      String?
+  publishedTime    String?
+  lastModifiedTime String?
+  viewed           Int?
+  used             Int?
+  lastUsedTime     String?
+  liked            Int?
+  disliked         Int?
+
+  @@schema("zoho")
+}
+
+model SolutionArticle {
+  id                BigInt                 @id
+  articleTitle      String?
+  answer            String?
+  category          String?
+  articleOwner      String?
+  status            String?
+  createdBy         String?
+  modifiedBy        String?
+  createdTime       DateTime?
+  modifiedTime      DateTime?
+  department        String?
+  articleStatus     String?
+  articlePermission String?
+  numberOfComments  Int?
+  likeCount         Int?
+  unlikeCount       Int?
+  attachmentCount   Int?
+  suggestedCount    Int?
+  lastUpVotedTime   DateTime?
+  lastDownVotedTime DateTime?
+  categoryName      String?
+  categoryPath      String?
+  embedding         Unsupported("vector")?
+
+  @@map("solution_articles")
+  @@schema("zoho")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+// ── World Mobile enums ──────────────────────────────────────
+
+enum IntegrationProvider {
+  GOOGLE
+  MICROSOFT
+
+  @@schema("public")
+}
+
+enum IntegrationService {
+  GMAIL
+  GOOGLE_CALENDAR
+  OUTLOOK_MAIL
+  OUTLOOK_CALENDAR
+
+  @@schema("public")
+}
+
+// WM OrderStatus (opan_orders)
 enum OrderStatus {
+  created
+  in_progress
+  signing
+  complete
+  expired
+  cancelled
+
+  @@schema("public")
+}
+
+enum TaskPriority {
+  low
+  medium
+  high
+  urgent
+
+  @@schema("public")
+}
+
+enum TaskStatus {
+  todo
+  in_progress
+  done
+  canceled
+
+  @@schema("public")
+}
+
+// ── OmniPost enums ──────────────────────────────────────────
+
+// Renamed from OrderStatus to avoid conflict with WM OrderStatus
+enum PostOrderStatus {
   PENDING
   ACCEPTED
   CANCELED
   COMPLETED
+
+  @@schema("public")
 }
 
-enum From {
+// Renamed from Role to avoid ambiguity
+enum UserRole {
+  SUPERADMIN
+  ADMIN
+  USER
+
+  @@schema("public")
+}
+
+// Renamed from From to avoid reserved word issues
+enum MessageFrom {
   BUYER
   SELLER
+
+  @@schema("public")
 }
 
-enum State {
+// Renamed from State to avoid ambiguity
+enum PostState {
   QUEUE
   PUBLISHED
   ERROR
   DRAFT
+
+  @@schema("public")
 }
 
 enum SubscriptionTier {
@@ -852,11 +2427,15 @@ enum SubscriptionTier {
   PRO
   TEAM
   ULTIMATE
+
+  @@schema("public")
 }
 
 enum Period {
   MONTHLY
   YEARLY
+
+  @@schema("public")
 }
 
 enum Provider {
@@ -866,16 +2445,14 @@ enum Provider {
   FARCASTER
   WALLET
   GENERIC
-}
 
-enum Role {
-  SUPERADMIN
-  ADMIN
-  USER
+  @@schema("public")
 }
 
 enum APPROVED_SUBMIT_FOR_ORDER {
   NO
   WAITING_CONFIRMATION
   YES
+
+  @@schema("public")
 }
